@@ -62,7 +62,11 @@ public:
 
 		//Round down to assign int index
 		xIndex = point.getX() / SCALE;
-		yIndex = point.getY() / SCALE; 
+		yIndex = point.getY() / SCALE;
+		if (xIndex > 100 || yIndex > 100 || xIndex < 0 || yIndex < 0) {
+			cout << "Error!! Array out range" << endl;
+			return;
+		}
 		blocks[xIndex][yIndex].pushPointVec(point);
 		cout << "x: " << xIndex << "y: " << yIndex << endl;
 	}

@@ -12,7 +12,10 @@
 #define Y_SCALE 100
 #define MAX_DIS SCALE * X_SCALE
 #define DIS_TO_CENTER X_SCALE/2+0.5
-#define SCALE 225 //half of width of robot(mm)
+//#define SCALE 225 //half of width of robot(mm)
+#define SCALE 150 //try a smaller scale
+
+#define PI 3.14159265
 
 using namespace std;
 
@@ -52,9 +55,14 @@ public:
 class CoordinateSys
 {
 private:
+	//Distance to the robot, IMU may be used to keep up with
+	//robot's location, Initially at center of grid map 
+        float dist_to_lidar;
 	Block blocks[X_SCALE][Y_SCALE]; //block(x,y)
 public:
-	CoordinateSys() {}
+	CoordinateSys() : dist_to_lidar(SCALE * DIS_TO_CENTER) {
+            assignRobotBlock(X_SCALE/2,Y_SCALE/2);
+        }
 	~CoordinateSys() {}
 
 	void assignBlock(Point point){
@@ -64,12 +72,14 @@ public:
 		xIndex = point.getX() / SCALE;
 		yIndex = point.getY() / SCALE; 
 		blocks[xIndex][yIndex].pushPointVec(point);
-		cout << "x: " << xIndex << "y: " << yIndex << endl;
+                printf("x: %d y: %d\n", xIndex, yIndex);
 	}
 
 	//Directly assign a block from lidar's raw data
 	void assignBlock(float angle, float distance){
-		assignBlock(transformToPoint(angle,distance));
+            if (distance == 0) return;
+            printf("Angle: %f Distance: %f ", angle, distance);
+            assignBlock(transformToPoint(angle,distance));
 	}
 
 	void assignRobotBlock(int x, int y){
@@ -89,52 +99,47 @@ public:
 	}
 
 	int calcuQuadrant(float angle){
-		cout << angle << endl;
+		//cout << angle << endl;
 		if (angle >= 0 && angle <= 90) return 1; 
 		else if (angle >=90 && angle <= 180) return 4;
 		else if (angle >= 180 && angle <= 270) return 3;
 		else if (angle >=270 && angle <=360) return 2;
 		else return -1;
 	}
+        
+        float degreeToRadian(float angle){
+            return angle * PI / 180.0;
+        }
 
 	Point transformToPoint(float angle, float distance){
 		float distance_x, distance_y;
-
-		//Distance to the robot, IMU may be used to keep up with
-		//robot's location
-		const float dist_to_lidar = SCALE * DIS_TO_CENTER;	
-		
+                
 		switch(calcuQuadrant(angle)){
 			case 1:
-				distance_x = dist_to_lidar + distance * sin(angle);
-				distance_y = dist_to_lidar - distance * cos(angle);			
+				distance_x = dist_to_lidar + distance * sin(degreeToRadian(angle));
+				distance_y = dist_to_lidar - distance * cos(degreeToRadian(angle));			
 				break;
 			case 2:
-				distance_x = dist_to_lidar - distance * sin(360-angle);
-				distance_y = dist_to_lidar - distance * cos(360-angle);	
+				distance_x = dist_to_lidar - distance * sin(degreeToRadian(360-angle));
+				distance_y = dist_to_lidar - distance * cos(degreeToRadian(360-angle));	
 				break;
 			case 3:
-				distance_x = dist_to_lidar - distance * sin(angle-180);
-				distance_y = dist_to_lidar + distance * cos(angle-180);	
+				distance_x = dist_to_lidar - distance * cos(degreeToRadian(270-angle));
+				distance_y = dist_to_lidar + distance * sin(degreeToRadian(270-angle));                               
 				break;
 			case 4:
-				distance_x = dist_to_lidar + distance * sin(180-angle);
-				distance_y = dist_to_lidar + distance * cos(180-angle);	
+				distance_x = dist_to_lidar + distance * sin(degreeToRadian(180-angle));
+				distance_y = dist_to_lidar + distance * cos(degreeToRadian(180-angle));	                             
 				break;			
 			case -1:
 				cout << "error" << endl;
 				break;
 			}
-		cout << distance_x << " " << distance_y << endl;
+                printf("%d XDis: %f YDis: %f ", calcuQuadrant(angle), distance_x, distance_y);
 		Point point(distance_x,distance_y);
 		return point;
 	}
 
 };
-
-
-
-
-
 
 #endif

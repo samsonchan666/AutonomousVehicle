@@ -26,6 +26,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 #include "./include/rplidar.h" //RPLIDAR standard sdk, all-in-one header
 #include "./include/coordinate_sys.h"
@@ -122,22 +123,24 @@ u_result capture_and_display(RPlidarDriver * drv)
         drv->ascendScanData(nodes, count);
         plot_histogram(nodes, count);
 
-        printf("Do you want to see all the data? (y/n) ");
-        int key = getchar();
-        if (key == 'Y' || key == 'y') {
+//        printf("Do you want to see all the data? (y/n) ");
+//        int key = getchar();
+//        if (key == 'Y' || key == 'y') {
             for (int pos = 0; pos < (int)count ; ++pos) {
-                // printf("%s theta: %03.2f Dist: %08.2f \n", 
-                //     (nodes[pos].sync_quality & RPLIDAR_RESP_MEASUREMENT_SYNCBIT) ?"S ":"  ", 
-                //     (nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f,
-                //     nodes[pos].distance_q2/4.0f);
-                corSys.assignBlock((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f,nodes[pos].distance_q2/4.0f);
+//                 printf("%s theta: %03.2f Dist: %08.2f \n", 
+//                     (nodes[pos].sync_quality & RPLIDAR_RESP_MEASUREMENT_SYNCBIT) ?"S ":"  ", 
+//                     (nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f,
+//                     nodes[pos].distance_q2/4.0f);
+                corSys.assignBlock((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f
+                    ,nodes[pos].distance_q2/4.0f);
             }
             corSys.printBlocks();
+            //printf("reach here");
         }
-    } else {
-        printf("error code: %x\n", ans);
-    }
-
+//    } else {
+//        printf("error code: %x\n", ans);
+//    }
+    usleep(1000);
     return ans;
 }
 
@@ -231,7 +234,9 @@ int main(int argc, const char * argv[]) {
             // drv->reset();
             break;
         }
-
+        
+        printf("Press any key to start the scan, press x to exit ");
+        if (getchar() == 'x') break;
         drv->startMotor();
 
         // take only one 360 deg scan and display the result as a histogram
@@ -247,8 +252,8 @@ int main(int argc, const char * argv[]) {
             break;
 
         }
-
-    } while(0);
+        
+    } while(1);
 
     drv->stop();
     drv->stopMotor();
