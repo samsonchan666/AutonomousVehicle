@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configurationDescriptor version="100">
+  <logicalFolder name="root" displayName="root" projectFiles="true" kind="ROOT">
+    <logicalFolder name="HeaderFiles"
+                   displayName="Header Files"
+                   projectFiles="true">
+    </logicalFolder>
+    <logicalFolder name="ResourceFiles"
+                   displayName="Resource Files"
+                   projectFiles="true">
+    </logicalFolder>
+    <logicalFolder name="SourceFiles"
+                   displayName="Source Files"
+                   projectFiles="true">
+      <itemPath>ADXL345.cpp</itemPath>
+      <itemPath>ADXL345.h</itemPath>
+      <itemPath>HMC5883L.cpp</itemPath>
+      <itemPath>HMC5883L.h</itemPath>
+      <itemPath>I2Cdev.cpp</itemPath>
+      <itemPath>I2Cdev.h</itemPath>
+      <itemPath>ITG3200.cpp</itemPath>
+      <itemPath>ITG3200.h</itemPath>
+      <itemPath>main.cpp</itemPath>
+    </logicalFolder>
+    <logicalFolder name="TestFiles"
+                   displayName="Test Files"
+                   projectFiles="false"
+                   kind="TEST_LOGICAL_FOLDER">
+    </logicalFolder>
+    <logicalFolder name="ExternalFiles"
+                   displayName="Important Files"
+                   projectFiles="false"
+                   kind="IMPORTANT_FILES_FOLDER">
+      <itemPath>Makefile</itemPath>
+    </logicalFolder>
+  </logicalFolder>
+  <sourceRootList>
+    <Elem>D:/data/62572/imu/razor-9dof-ahrs-master/razor-9dof-ahrs-master/C++</Elem>
+  </sourceRootList>
+  <projectmakefile>Makefile</projectmakefile>
+  <confs>
+    <conf name="Debug" type="1">
+      <toolsSet>
+        <compilerSet>GNU|GNU</compilerSet>
+        <dependencyChecking>true</dependencyChecking>
+        <rebuildPropChanged>false</rebuildPropChanged>
+      </toolsSet>
+      <compileType>
+        <cTool>
+          <incFile>
+            <pElem>HMC5883L.h</pElem>
+            <pElem>I2Cdev.h</pElem>
+          </incFile>
+          <preprocessorList>
+            <Elem>_REENTRANT 1</Elem>
+          </preprocessorList>
+        </cTool>
+        <ccTool>
+          <incFile>
+            <pElem>I2Cdev.h</pElem>
+            <pElem>HMC5883L.h</pElem>
+          </incFile>
+          <preprocessorList>
+            <Elem>_REENTRANT 1</Elem>
+          </preprocessorList>
+        </ccTool>
+        <linkerTool>
+          <linkerLibItems>
+            <linkerOptionItem>-lwiringPi</linkerOptionItem>
+            <linkerOptionItem>-lbcm2835</linkerOptionItem>
+            <linkerOptionItem>-lpthread</linkerOptionItem>
+          </linkerLibItems>
+        </linkerTool>
+      </compileType>
+      <item path="ADXL345.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="ADXL345.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="HMC5883L.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="HMC5883L.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="I2Cdev.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="I2Cdev.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="ITG3200.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="ITG3200.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="main.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+    </conf>
+    <conf name="Release" type="1">
+      <toolsSet>
+        <compilerSet>default</compilerSet>
+        <dependencyChecking>true</dependencyChecking>
+        <rebuildPropChanged>false</rebuildPropChanged>
+      </toolsSet>
+      <compileType>
+        <cTool>
+          <developmentMode>5</developmentMode>
+        </cTool>
+        <ccTool>
+          <developmentMode>5</developmentMode>
+        </ccTool>
+        <fortranCompilerTool>
+          <developmentMode>5</developmentMode>
+        </fortranCompilerTool>
+        <asmTool>
+          <developmentMode>5</developmentMode>
+        </asmTool>
+      </compileType>
+      <item path="ADXL345.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="ADXL345.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="HMC5883L.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="HMC5883L.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="I2Cdev.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="I2Cdev.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="ITG3200.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="ITG3200.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="main.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+    </conf>
+  </confs>
+</configurationDescriptor>
