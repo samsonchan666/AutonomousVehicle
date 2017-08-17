@@ -4,12 +4,6 @@
     <logicalFolder name="HeaderFiles"
                    displayName="Header Files"
                    projectFiles="true">
-      <itemPath>include/coordinate_sys.h</itemPath>
-      <itemPath>include/rplidar.h</itemPath>
-      <itemPath>include/rplidar_cmd.h</itemPath>
-      <itemPath>include/rplidar_driver.h</itemPath>
-      <itemPath>include/rplidar_protocol.h</itemPath>
-      <itemPath>include/rptypes.h</itemPath>
     </logicalFolder>
     <logicalFolder name="ResourceFiles"
                    displayName="Resource Files"
@@ -18,18 +12,23 @@
     <logicalFolder name="SourceFiles"
                    displayName="Source Files"
                    projectFiles="true">
+      <itemPath>include/IMU/ADXL345.cpp</itemPath>
+      <itemPath>include/IMU/ADXL345.h</itemPath>
+      <itemPath>include/IMU/HMC5883L.cpp</itemPath>
+      <itemPath>include/IMU/HMC5883L.h</itemPath>
+      <itemPath>include/IMU/I2Cdev.cpp</itemPath>
+      <itemPath>include/IMU/I2Cdev.h</itemPath>
+      <itemPath>include/IMU/IMU.h</itemPath>
+      <itemPath>include/IMU/ITG3200.cpp</itemPath>
+      <itemPath>include/IMU/ITG3200.h</itemPath>
+      <itemPath>include/coordinate_sys.h</itemPath>
+      <itemPath>include/IMU/i2cRaspberryGPIO.h</itemPath>
       <itemPath>main.cpp</itemPath>
-    </logicalFolder>
-    <logicalFolder name="TestFiles"
-                   displayName="Test Files"
-                   projectFiles="false"
-                   kind="TEST_LOGICAL_FOLDER">
-    </logicalFolder>
-    <logicalFolder name="ExternalFiles"
-                   displayName="Important Files"
-                   projectFiles="false"
-                   kind="IMPORTANT_FILES_FOLDER">
-      <itemPath>Makefile</itemPath>
+      <itemPath>include/rplidar.h</itemPath>
+      <itemPath>include/rplidar_cmd.h</itemPath>
+      <itemPath>include/rplidar_driver.h</itemPath>
+      <itemPath>include/rplidar_protocol.h</itemPath>
+      <itemPath>include/rptypes.h</itemPath>
     </logicalFolder>
     <logicalFolder name="TestFiles"
                    displayName="Test Files"
@@ -52,10 +51,40 @@
         <rebuildPropChanged>false</rebuildPropChanged>
       </toolsSet>
       <compileType>
+        <ccTool>
+          <incDir>
+            <pElem>include/IMU</pElem>
+          </incDir>
+        </ccTool>
         <linkerTool>
+          <linkerLibItems>
+            <linkerOptionItem>-lbcm2835</linkerOptionItem>
+            <linkerOptionItem>-lpthread</linkerOptionItem>
+            <linkerOptionItem>-lwiringPi</linkerOptionItem>
+          </linkerLibItems>
           <commandLine>librplidar_sdk.a -pthread</commandLine>
         </linkerTool>
       </compileType>
+      <item path="include/IMU/ADXL345.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="include/IMU/ADXL345.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/IMU/HMC5883L.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="include/IMU/HMC5883L.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/IMU/I2Cdev.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="include/IMU/I2Cdev.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/IMU/IMU.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/IMU/ITG3200.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="include/IMU/ITG3200.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/IMU/i2cRaspberryGPIO.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="include/coordinate_sys.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="include/rplidar.h" ex="false" tool="3" flavor2="0">
@@ -91,6 +120,26 @@
           <developmentMode>5</developmentMode>
         </asmTool>
       </compileType>
+      <item path="include/IMU/ADXL345.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="include/IMU/ADXL345.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/IMU/HMC5883L.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="include/IMU/HMC5883L.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/IMU/I2Cdev.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="include/IMU/I2Cdev.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/IMU/IMU.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/IMU/ITG3200.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="include/IMU/ITG3200.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="include/IMU/i2cRaspberryGPIO.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="include/coordinate_sys.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="include/rplidar.h" ex="false" tool="3" flavor2="0">

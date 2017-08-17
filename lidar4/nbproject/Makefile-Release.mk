@@ -35,6 +35,10 @@ OBJECTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}
 
 # Object Files
 OBJECTFILES= \
+	${OBJECTDIR}/include/IMU/ADXL345.o \
+	${OBJECTDIR}/include/IMU/HMC5883L.o \
+	${OBJECTDIR}/include/IMU/I2Cdev.o \
+	${OBJECTDIR}/include/IMU/ITG3200.o \
 	${OBJECTDIR}/main.o
 
 
@@ -56,11 +60,31 @@ LDLIBSOPTIONS=
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
-	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/lidar3
+	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/lidar4
 
-${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/lidar3: ${OBJECTFILES}
+${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/lidar4: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
-	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/lidar3 ${OBJECTFILES} ${LDLIBSOPTIONS}
+	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/lidar4 ${OBJECTFILES} ${LDLIBSOPTIONS}
+
+${OBJECTDIR}/include/IMU/ADXL345.o: include/IMU/ADXL345.cpp
+	${MKDIR} -p ${OBJECTDIR}/include/IMU
+	${RM} "$@.d"
+	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/include/IMU/ADXL345.o include/IMU/ADXL345.cpp
+
+${OBJECTDIR}/include/IMU/HMC5883L.o: include/IMU/HMC5883L.cpp
+	${MKDIR} -p ${OBJECTDIR}/include/IMU
+	${RM} "$@.d"
+	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/include/IMU/HMC5883L.o include/IMU/HMC5883L.cpp
+
+${OBJECTDIR}/include/IMU/I2Cdev.o: include/IMU/I2Cdev.cpp
+	${MKDIR} -p ${OBJECTDIR}/include/IMU
+	${RM} "$@.d"
+	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/include/IMU/I2Cdev.o include/IMU/I2Cdev.cpp
+
+${OBJECTDIR}/include/IMU/ITG3200.o: include/IMU/ITG3200.cpp
+	${MKDIR} -p ${OBJECTDIR}/include/IMU
+	${RM} "$@.d"
+	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/include/IMU/ITG3200.o include/IMU/ITG3200.cpp
 
 ${OBJECTDIR}/main.o: main.cpp
 	${MKDIR} -p ${OBJECTDIR}
