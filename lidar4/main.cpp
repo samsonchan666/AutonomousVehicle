@@ -27,6 +27,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
+#include <pthread.h>
+#include <fstream>
 
 #include "./include/rplidar.h" //RPLIDAR standard sdk, all-in-one header
 #include "./include/coordinate_sys.h"
@@ -51,11 +53,19 @@ static inline void delay(_word_size_t ms){
 }
 #endif
 
+#define GRAVITY 9.80665
+#define raw2mssq(i) i*GRAVITY/256
+
 using namespace rp::standalone::rplidar;
 
 void print_usage(int argc, const char * argv[]);
 u_result capture_and_display(RPlidarDriver * drv);
 // void plot_histogram(rplidar_response_measurement_node_t * nodes, size_t count)
+void* run_IMU(void *);
+void* run_lidar(void *);
+
+bool IMU_loop = true;
+bool lidar_loop = true;
 
 int main(int argc, const char * argv[]) {
     
@@ -80,8 +90,6 @@ int main(int argc, const char * argv[]) {
 
     rplidar_response_device_health_t healthinfo;
     rplidar_response_device_info_t devinfo;
-
-    IMU imu;    //Create the IMU object
 
     // do {
         // try to connect
@@ -151,41 +159,39 @@ int main(int argc, const char * argv[]) {
             // drv->reset();
             // break;
         }
-    do {
-        Accelerometer cur_acc, pre_acc;
-        float x_cur_vel, y_cur_vel;
-        float x_pre_vel = 0; float y_pre_vel = 0;
-        imu.run_sensors(); //Run the sensors
-        cur_acc = imu.getAccelerometer();
-        x_cur_vel = (cur_acc.calibrated_x - pre_acc.calibrated_x) * 0.1;
-        y_cur_vel = (cur_acc.calibrated_y - pre_acc.calibrated_y) * 0.1;
-        float x_distance = x_distance + ( x_cur_vel - x_pre_vel ) * 0.1;
-        float y_distance = y_distance + ( y_cur_vel - y_pre_vel ) * 0.1;
-        pre_acc = cur_acc;
-        x_pre_vel = x_cur_vel;
-        y_pre_vel = y_cur_vel;
-        
 
-        printf("Press any key to start the scan, press x to exit ");
-        if (getchar() == 'x') break;
-        drv->startMotor();
-
-        // take only one 360 deg scan and display the result as a histogram
-        ////////////////////////////////////////////////////////////////////////////////
-        if (IS_FAIL(drv->startScan( /* true */ ))) // you can force rplidar to perform scan operation regardless whether the motor is rotating
+        int IMUThreadRes;
+        pthread_t IMUThread; //create new thread
+        if((IMUThreadRes = pthread_create(&IMUThread,NULL,run_IMU,NULL)))
         {
-            fprintf(stderr, "Error, cannot start the scan operation.\n");
-            break;
+            printf("Unable to create IMU thread: %d\n\r",IMUThreadRes);
+            IMU_loop = false;
         }
-
-        if (IS_FAIL(capture_and_display(drv))) {
-            fprintf(stderr, "Error, cannot grab scan data.\n");
-            break;
-
-        }
-        //usleep(100);    // Sleep for 0.1s
-
-    } while(1);
+        
+        int lidarThreadRes;
+        pthread_t lidarThread;
+        if((lidarThreadRes = pthread_create(&lidarThread,NULL,run_lidar, (void* )drv)))
+        {
+            printf("Unable to create IMU thread: %d\n\r",lidarThreadRes);
+            lidar_loop = false;
+        }        
+    
+    while (1){
+        printf("Press any key to to exit ");
+         if (getchar()) break;
+     }
+        
+    void *status;
+    int IMU_JoinRes, lidar_JoinRes;
+    IMU_loop = false;
+    lidar_loop = false;
+    
+    if (IMU_JoinRes=pthread_join(IMUThread, &status)){
+        printf("Error:unable to join, %d", IMU_JoinRes );
+    }   
+    if (lidar_JoinRes=pthread_join(lidarThread, &status)){
+        printf("Error:unable to join, %d", lidar_JoinRes );
+    }   
 
     drv->stop();
     drv->stopMotor();
@@ -228,8 +234,8 @@ u_result capture_and_display(RPlidarDriver * drv)
 //                     (nodes[pos].sync_quality & RPLIDAR_RESP_MEASUREMENT_SYNCBIT) ?"S ":"  ", 
 //                     (nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f,
 //                     nodes[pos].distance_q2/4.0f);
-                corSys.assignBlock((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f
-                    ,nodes[pos].distance_q2/4.0f);
+//                corSys.assignBlock((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f
+//                    ,nodes[pos].distance_q2/4.0f);
             }
             //corSys.printBlocks();
             //printf("reach here");
@@ -239,6 +245,101 @@ u_result capture_and_display(RPlidarDriver * drv)
 //    }
     //usleep(1000);
     return ans;
+}
+
+void* run_IMU(void * ){
+    ofstream dataLog;
+    dataLog.open("log.txt");
+    IMU imu;    //Create the IMU object  
+    int count = 0;
+    int count2 = 0; //Offset counts
+    float x_acc_avr =0 ;
+    float y_acc_avr =0 ;
+    float timeInterval = 0.001;  //second 
+    float _timeInterval = 0.001 * pow(10, 6); //macro second (10^-6)
+    Accelerometer cur_acc, pre_acc;
+    pre_acc.ax = 0; pre_acc.ay = 0; pre_acc.az  = 0; //Initialize it
+    float x_cur_vel = 0; float y_cur_vel = 0;
+    float x_pre_vel = 0; float y_pre_vel = 0;
+    float x_distance = 0;   //accumulate every 0.01s
+    float y_distance = 0;   //accumulate every 0.01s
+    float x_distance_t = 0; //accumulate every 1s 
+    float y_distance_t = 0; //accumulate every 1s 
+    
+    while (IMU_loop){
+//        if (count == timeInterval){   //One second
+//            if ( abs(x_acc_avr) > 1.2) x_distance_t += x_distance;
+//            if ( abs(y_acc_avr) > 1.2) y_distance_t += y_distance;  
+//            // reset all the count
+//            count = 0; 
+//            y_acc_avr = 0;
+//            x_acc_avr = 0;
+//            printf("%d", count2);
+//            count2++;
+//            printf("Distance(accumulate in second): %.4f %.4f", x_distance_t, y_distance_t );
+//        }          
+        if (!(imu.run_sensors())) continue; //Run the sensors, skip extreme value
+        cur_acc = imu.getAccelerometer();
+        
+        //Try to accumulate acceleration for noise testing
+        y_acc_avr += cur_acc.ay;   
+        x_acc_avr += cur_acc.ax;   
+         
+        /*
+         // Offset test (in raw acceleration value)     
+        printf("%d ", count2);
+        float no_of_samples = 1000;
+        if (count2 > no_of_samples) {
+            printf("Offset: %.3f %.3f", x_acc_avr/=no_of_samples, y_acc_avr/no_of_samples );
+            break;
+        }
+        else {
+            dataLog << cur_acc.ax << "\t" << cur_acc.ay << "\n";
+            y_acc_avr += cur_acc.ay;
+            x_acc_avr += cur_acc.ax;
+        };
+        count2++;
+        */
+        if (abs(cur_acc.ax-pre_acc.ax > 1)){    // To avoid small noise
+            x_cur_vel = x_pre_vel + (raw2mssq(cur_acc.ax) * timeInterval);    // v = v0 + at, set the t to 0.01   
+            x_distance = x_distance + ( x_cur_vel  * timeInterval);   // s = s0 +vt, set t to 0.01
+        }
+        
+        if (abs(cur_acc.ay-pre_acc.ay > 1)){    // To avoid small noise
+            y_cur_vel = y_pre_vel + (raw2mssq(cur_acc.ay) * timeInterval);
+            y_distance = y_distance + ( y_cur_vel  * timeInterval);           
+        } 
+        printf("%.3f %.3f\n", x_cur_vel, y_cur_vel);
+        printf("%.3f %.3f\n", x_distance, y_distance);
+        fflush(stdout);
+        x_pre_vel = x_cur_vel;
+        y_pre_vel = y_cur_vel;
+        pre_acc = cur_acc;
+        count++;
+        usleep(_timeInterval);      
+    }
+    dataLog.close();
+    pthread_exit(NULL);
+}
+
+void* run_lidar(void * _drv){
+    RPlidarDriver * drv = static_cast<RPlidarDriver *>(_drv);
+    drv->startMotor();
+     // take only one 360 deg scan and display the result as a histogram
+     ////////////////////////////////////////////////////////////////////////////////
+    if (IS_FAIL(drv->startScan( /* true */ ))) // you can force rplidar to perform scan operation regardless whether the motor is rotating
+    {
+        fprintf(stderr, "Error, cannot start the scan operation.\n");
+        pthread_exit(NULL);
+    }
+    while (lidar_loop){
+        if (IS_FAIL(capture_and_display(drv))) {
+            fprintf(stderr, "Error, cannot grab scan data.\n");
+            break;
+        }
+        //usleep(100);    // Sleep for 0.1s       
+      }
+    pthread_exit(NULL);
 }
 
 // void plot_histogram(rplidar_response_measurement_node_t * nodes, size_t count)

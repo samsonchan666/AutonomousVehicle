@@ -57,11 +57,16 @@ class CoordinateSys
 private:
 	//Distance to the robot, IMU may be used to keep up with
 	//robot's location, Initially at center of grid map 
-        float dist_to_lidar;
+    float dist_to_lidar;
+    //Robot's coordinate in grid map
+    int robot_x, robot_y;
 	Block blocks[X_SCALE][Y_SCALE]; //block(x,y)
 public:
-	CoordinateSys() : dist_to_lidar(SCALE * DIS_TO_CENTER) {
-            assignRobotBlock(X_SCALE/2,Y_SCALE/2);
+	CoordinateSys() : dist_to_lidar(SCALE * DIS_TO_CENTER),
+					  robot_x(X_SCALE/2),
+					  robot_y(Y_SCALE/2) {
+			//initialize the robot position to center
+            assignRobotBlock(robot_x,robot_y);
         }
 	~CoordinateSys() {}
 
@@ -84,6 +89,13 @@ public:
 
 	void assignRobotBlock(int x, int y){
 		blocks[x][y].setRobotExist(true);
+	}
+
+	//Distance the robot move to localize it
+	void robotMovef(float angle, float d){
+		// Cannot see a difference if d is less than the scale
+		if (d < SCALE) return;
+
 	}
 
 	void printBlocks(){

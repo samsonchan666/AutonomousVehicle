@@ -12,17 +12,18 @@
 #include "ITG3200.h"
 
 #define PI 3.14159265
+
 enum { MAGNET, ACC_METER, GYRO };
 
 struct Accelerometer{
-	int16_t calibrated_x = 0 , calibrated_y = 0, calibrated_z = 0;
-	int16_t raw_x, raw_y, raw_z;
+	int16_t ax = 0;
+	int16_t ay = 0;
+	int16_t az = 0;
 };
 
 struct Magnet
 {
-	int16_t calibrated_x, calibrated_y, calibrated_z;
-	int16_t raw_x, raw_y, raw_z;
+	int16_t mx, my, mz;
 	float heading;
 };
 
@@ -73,26 +74,33 @@ public:
 	Accelerometer getAccelerometer(){ return acc_struct;}
 	Magnet getMagnet() { return mag_struct;}
 
-	void run_sensors(){
-	    acc.getAcceleration(&acc_struct.raw_x, &acc_struct.raw_y, &acc_struct.raw_z);
-	    compensate_sensor_errors(acc_struct.raw_x, acc_struct.raw_y, acc_struct.raw_z, ACC_METER);
-	    mag.getHeading(&mag_struct.raw_x, &mag_struct.raw_y, &mag_struct.raw_z);
-	    compensate_sensor_errors(mag_struct.raw_x, mag_struct.raw_y, mag_struct.raw_z, MAGNET);
-	    mag_struct.heading = atan2(mag_struct.calibrated_y, mag_struct.calibrated_x)  * 180 / PI;
+	bool run_sensors(){
+	    acc.getAcceleration(&acc_struct.ax, &acc_struct.ay, &acc_struct.az);
+	    compensate_sensor_errors(&acc_struct.ax, &acc_struct.ay, &acc_struct.az, ACC_METER);
+            
+            if (acc_struct.ax > 256 || acc_struct.ax < -256) return false;  //Extreme value
+            else if (acc_struct.ay > 256 || acc_struct.ay < -256) return false;
+            //else if (acc_struct.az > 256 || acc_struct.az < -256) return false; //Don't care about z right now
+            
+	    mag.getHeading(&mag_struct.mx, &mag_struct.my, &mag_struct.mz);
+	    compensate_sensor_errors(&mag_struct.mx, &mag_struct.my, &mag_struct.mz, MAGNET);
+	    mag_struct.heading = atan2(mag_struct.my, mag_struct.mx)  * 180 / PI;
 
 	    printf("  ax:  %5d       ay:  %5d      az:  %5d,       mx:  %3d       my:  %3d      mz:  %3d     heading:  %3.1f deg\n"
-	      , acc_struct.calibrated_x, acc_struct.calibrated_y, acc_struct.calibrated_z, 
-	      mag_struct.calibrated_x, mag_struct.calibrated_y, mag_struct.calibrated_z, mag_struct.heading); 
-
+	      , acc_struct.ax, acc_struct.ay, acc_struct.az, 
+	      mag_struct.mx, mag_struct.my, mag_struct.mz, mag_struct.heading); 
+            
 	    // write to logfile
 	    // dataLog << "ax:  " << ax << "      ay:  " << ay << "     az:  " << az;
 	    // dataLog << ",       mx:  " << mx << "       my:  " << my << "       mz:  " << mz << "     heading:  " << heading <<  " deg" << endl;
 
 	    fflush(stdout);
-	    bcm2835_delay(200);	
+	    //bcm2835_delay(200);
+            return true;
 	}
 
-	void compensate_sensor_errors(int16_t  x, int16_t  y, int16_t  z, int SENSOR) {
+	//Compensate wrongly scaled sensor axes, zero offsets
+	void compensate_sensor_errors(int16_t*  x, int16_t*  y, int16_t*  z, int SENSOR) {
 	  switch(SENSOR){
 	    case MAGNET: {
 	      float x_max = 450; float x_min = -421; float y_max = 325; float y_min = -549;
@@ -103,9 +111,9 @@ public:
 	      float x_scale = 100.0/(x_max - x_offset); float y_scale = 100.0/(y_max - y_offset);
 	      float z_scale = 100.0/(z_max - z_offset);
 
-	      mag_struct.calibrated_x = (float(x) - x_offset) * x_scale;
-	      mag_struct.calibrated_y = (float(y) - y_offset) * y_scale;
-	      mag_struct.calibrated_z = (float(z) - z_offset) * z_scale;
+              (*x) = (float(*x) - x_offset) * x_scale;
+	      (*y) = (float(*y) - y_offset) * y_scale;
+	      (*z) = (float(*z) - z_offset) * z_scale;
 	      break;
 	    }
 	    case ACC_METER: {
@@ -114,24 +122,25 @@ public:
 	      float z_max = 250; float z_min = -250;
 	      float x_offset = (x_max + x_min) / 2.0; 
 	      float y_offset = (y_max + y_min) / 2.0;  
-	      float x_cal_offset = 12.5; float y_cal_offset = -7.5;
+	      float x_cal_offset = 16.284; float y_cal_offset = -12.985; //12.5, -7.5
 	      
 	      float z_offset = (z_max + z_min) / 2.0;   
 	      float x_scale = gravity/(x_max - x_offset); float y_scale = gravity/(y_max - y_offset);
 	      float z_scale = gravity/(z_max - z_offset);
 
-	      acc_struct.calibrated_x = ((float(x) - x_offset) * x_scale) - x_cal_offset;
-	      acc_struct.calibrated_y = ((float(y) - y_offset) * y_scale) - y_cal_offset;
-	      acc_struct.calibrated_z = (float(z) - z_offset) * z_scale;
+	      (*x) = ((float(*x) - x_offset) * x_scale) - x_cal_offset;
+	      (*y) = ((float(*y) - y_offset) * y_scale) - y_cal_offset;
+	      (*z) = (float(*z) - z_offset) * z_scale;
 	      break;
 	    }
 	    case GYRO: {
 	      break;
 	    }
 	    default: break;
-  	}
+  		}
 
 	}
+
 
 };
 
