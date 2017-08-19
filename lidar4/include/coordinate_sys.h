@@ -13,7 +13,9 @@
 #define MAX_DIS SCALE * X_SCALE
 #define DIS_TO_CENTER X_SCALE/2+0.5
 //#define SCALE 225 //half of width of robot(mm)
-#define SCALE 150 //try a smaller scale
+//#define SCALE 150 //try a smaller scale
+//#define SCALE 100 //try a smaller scale
+#define SCALE 80 //try a smaller scale  
 
 #define PI 3.14159265
 
@@ -63,8 +65,8 @@ private:
 	Block blocks[X_SCALE][Y_SCALE]; //block(x,y)
 public:
 	CoordinateSys() : dist_to_lidar(SCALE * DIS_TO_CENTER),
-					  robot_x(X_SCALE/2),
-					  robot_y(Y_SCALE/2) {
+					  robot_x(0),
+					  robot_y(0) {
 			//initialize the robot position to center
             assignRobotBlock(robot_x,robot_y);
         }
@@ -76,6 +78,9 @@ public:
 		//Round down to assign int index
 		xIndex = point.getX() / SCALE;
 		yIndex = point.getY() / SCALE; 
+           
+                if (outRange(xIndex, yIndex)) return;
+                
 		blocks[xIndex][yIndex].pushPointVec(point);
                 //printf("x: %d y: %d\n", xIndex, yIndex);
 	}
@@ -88,7 +93,21 @@ public:
 	}
 
 	void assignRobotBlock(int x, int y){
-		blocks[x][y].setRobotExist(true);
+            
+            if (outRange(X_SCALE/2+x, Y_SCALE/2+y)) return;
+            //Removal of existing robot block
+            for (int i = 0; i < Y_SCALE; i++){  
+                    for (int j = 0; j < X_SCALE; j++){
+                        if (blocks[j][i].getRobotExist()){
+                            if ((j == x && i == y)) break;
+                            else {
+                                blocks[j][i].setRobotExist(false);  
+                                break;
+                            }                      
+                        }
+                    }
+            }
+            blocks[X_SCALE/2+x][Y_SCALE/2+y].setRobotExist(true);
 	}
 
 	//Distance the robot move to localize it
@@ -151,6 +170,18 @@ public:
 		Point point(distance_x,distance_y);
 		return point;
 	}
+        
+        bool outRange(int x, int y){
+            if (x < 0 || y < 0) {
+                printf("Error, array index negative\n");
+                return true;
+            }
+            else if (x > X_SCALE || y > Y_SCALE){
+                printf("Error, array index outrange\n");
+                return true;
+            }
+            return false;
+        }
 
 };
 

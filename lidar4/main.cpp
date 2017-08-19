@@ -55,6 +55,7 @@ static inline void delay(_word_size_t ms){
 
 #define GRAVITY 9.80665
 #define raw2mssq(i) i*GRAVITY/256
+#define m2mm(i) i*100*10
 
 using namespace rp::standalone::rplidar;
 
@@ -66,6 +67,7 @@ void* run_lidar(void *);
 
 bool IMU_loop = true;
 bool lidar_loop = true;
+CoordinateSys corSys;
 
 int main(int argc, const char * argv[]) {
     
@@ -212,7 +214,6 @@ void print_usage(int argc, const char * argv[])
 
 u_result capture_and_display(RPlidarDriver * drv)
 {
-    CoordinateSys corSys;
     u_result ans;
     
     rplidar_response_measurement_node_t nodes[360*2];
@@ -234,16 +235,15 @@ u_result capture_and_display(RPlidarDriver * drv)
 //                     (nodes[pos].sync_quality & RPLIDAR_RESP_MEASUREMENT_SYNCBIT) ?"S ":"  ", 
 //                     (nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f,
 //                     nodes[pos].distance_q2/4.0f);
-//                corSys.assignBlock((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f
-//                    ,nodes[pos].distance_q2/4.0f);
+                corSys.assignBlock((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f
+                    ,nodes[pos].distance_q2/4.0f);
             }
-            //corSys.printBlocks();
-            //printf("reach here");
+            corSys.printBlocks();
         }
 //    } else {
 //        printf("error code: %x\n", ans);
 //    }
-    //usleep(1000);
+    delay(_word_size_t(1000));
     return ans;
 }
 
@@ -257,60 +257,75 @@ void* run_IMU(void * ){
     float y_acc_avr =0 ;
     float timeInterval = 0.001;  //second 
     float _timeInterval = 0.001 * pow(10, 6); //macro second (10^-6)
+    int _no_of_samples = 100;
     Accelerometer cur_acc, pre_acc;
     pre_acc.ax = 0; pre_acc.ay = 0; pre_acc.az  = 0; //Initialize it
     float x_cur_vel = 0; float y_cur_vel = 0;
     float x_pre_vel = 0; float y_pre_vel = 0;
-    float x_distance = 0;   //accumulate every 0.01s
-    float y_distance = 0;   //accumulate every 0.01s
+    float x_distance = 0;   //accumulate every 0.001s
+    float y_distance = 0;   //accumulate every 0.001s
     float x_distance_t = 0; //accumulate every 1s 
     float y_distance_t = 0; //accumulate every 1s 
     
     while (IMU_loop){
-//        if (count == timeInterval){   //One second
-//            if ( abs(x_acc_avr) > 1.2) x_distance_t += x_distance;
-//            if ( abs(y_acc_avr) > 1.2) y_distance_t += y_distance;  
-//            // reset all the count
-//            count = 0; 
-//            y_acc_avr = 0;
-//            x_acc_avr = 0;
-//            printf("%d", count2);
-//            count2++;
-//            printf("Distance(accumulate in second): %.4f %.4f", x_distance_t, y_distance_t );
-//        }          
+        if (count == _no_of_samples){   //0.1s
+            x_acc_avr /= _no_of_samples;
+            y_acc_avr /= _no_of_samples;
+            //printf("x, y average: %f, %f\n", abs(x_acc_avr), y_acc_avr);
+            if ( abs(x_acc_avr) > 1.7) {
+                x_distance_t += x_distance;                
+                //cout << "Bigger than 1.7" << endl;
+            }
+            if ( abs(y_acc_avr) > 1.6) y_distance_t += y_distance;  
+            // reset all the count
+            count = 0; 
+            y_acc_avr = 0;
+            x_acc_avr = 0;
+            x_distance = 0;
+            y_distance = 0;
+            printf("Distance(accumulate in second): %.4f %.4f ", x_distance_t, y_distance_t );
+            printf("%d %d \n", int(floor(m2mm(x_distance_t)/(SCALE))), int(floor(m2mm(y_distance_t)/SCALE)));
+            corSys.assignRobotBlock(int(floor(m2mm(x_distance_t)/(SCALE))), int(floor(m2mm(y_distance_t)/SCALE)));
+        }
+
         if (!(imu.run_sensors())) continue; //Run the sensors, skip extreme value
         cur_acc = imu.getAccelerometer();
         
-        //Try to accumulate acceleration for noise testing
+//        Try to accumulate acceleration for noise testing
         y_acc_avr += cur_acc.ay;   
         x_acc_avr += cur_acc.ax;   
          
         /*
          // Offset test (in raw acceleration value)     
         printf("%d ", count2);
-        float no_of_samples = 1000;
-        if (count2 > no_of_samples) {
-            printf("Offset: %.3f %.3f", x_acc_avr/=no_of_samples, y_acc_avr/no_of_samples );
-            break;
-        }
-        else {
-            dataLog << cur_acc.ax << "\t" << cur_acc.ay << "\n";
-            y_acc_avr += cur_acc.ay;
-            x_acc_avr += cur_acc.ax;
-        };
-        count2++;
-        */
-        if (abs(cur_acc.ax-pre_acc.ax > 1)){    // To avoid small noise
-            x_cur_vel = x_pre_vel + (raw2mssq(cur_acc.ax) * timeInterval);    // v = v0 + at, set the t to 0.01   
-            x_distance = x_distance + ( x_cur_vel  * timeInterval);   // s = s0 +vt, set t to 0.01
-        }
+        float no_of_samples = 100;
+        //if (count < 100){
+            if (count2 > no_of_samples) {
+                printf("Offset: %.3f %.3f", x_acc_avr/=no_of_samples, y_acc_avr/=no_of_samples );
+                dataLog << x_acc_avr << "\t" << y_acc_avr << "\n";
+                count2 = 0;
+                x_acc_avr = 0; 
+                y_acc_avr = 0;
+                count++;
+                break;
+            }
+            else {
+                //dataLog << cur_acc.ax << "\t" << cur_acc.ay << "\n";
+                y_acc_avr += cur_acc.ay;
+                x_acc_avr += cur_acc.ax;
+            };
+            count2++;            
+        //}
+        //else break;
+*/
+        x_cur_vel = x_pre_vel + (raw2mssq(cur_acc.ax) * timeInterval);    // v = v0 + at, set the t to 0.001   
+        x_distance = x_distance + ( x_cur_vel  * timeInterval);   // s = s0 +vt, set t to 0.001
         
-        if (abs(cur_acc.ay-pre_acc.ay > 1)){    // To avoid small noise
-            y_cur_vel = y_pre_vel + (raw2mssq(cur_acc.ay) * timeInterval);
-            y_distance = y_distance + ( y_cur_vel  * timeInterval);           
-        } 
-        printf("%.3f %.3f\n", x_cur_vel, y_cur_vel);
-        printf("%.3f %.3f\n", x_distance, y_distance);
+        y_cur_vel = y_pre_vel + (raw2mssq(cur_acc.ay) * timeInterval);
+        y_distance = y_distance + ( y_cur_vel  * timeInterval);           
+ 
+//        printf("%.3f %.3f\n", x_cur_vel, y_cur_vel);
+//        printf("%.3f %.3f\n", x_distance, y_distance);
         fflush(stdout);
         x_pre_vel = x_cur_vel;
         y_pre_vel = y_cur_vel;
@@ -325,7 +340,7 @@ void* run_IMU(void * ){
 void* run_lidar(void * _drv){
     RPlidarDriver * drv = static_cast<RPlidarDriver *>(_drv);
     drv->startMotor();
-     // take only one 360 deg scan and display the result as a histogram
+     // take only one 360 deg scan and       display the result as a histogram
      ////////////////////////////////////////////////////////////////////////////////
     if (IS_FAIL(drv->startScan( /* true */ ))) // you can force rplidar to perform scan operation regardless whether the motor is rotating
     {
@@ -337,7 +352,6 @@ void* run_lidar(void * _drv){
             fprintf(stderr, "Error, cannot grab scan data.\n");
             break;
         }
-        //usleep(100);    // Sleep for 0.1s       
       }
     pthread_exit(NULL);
 }

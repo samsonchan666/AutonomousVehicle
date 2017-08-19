@@ -86,9 +86,9 @@ public:
 	    compensate_sensor_errors(&mag_struct.mx, &mag_struct.my, &mag_struct.mz, MAGNET);
 	    mag_struct.heading = atan2(mag_struct.my, mag_struct.mx)  * 180 / PI;
 
-	    printf("  ax:  %5d       ay:  %5d      az:  %5d,       mx:  %3d       my:  %3d      mz:  %3d     heading:  %3.1f deg\n"
-	      , acc_struct.ax, acc_struct.ay, acc_struct.az, 
-	      mag_struct.mx, mag_struct.my, mag_struct.mz, mag_struct.heading); 
+//	    printf("  ax:  %5d       ay:  %5d      az:  %5d,       mx:  %3d       my:  %3d      mz:  %3d     heading:  %3.1f deg\n"
+//	      , acc_struct.ax, acc_struct.ay, acc_struct.az, 
+//	      mag_struct.mx, mag_struct.my, mag_struct.mz, mag_struct.heading); 
             
 	    // write to logfile
 	    // dataLog << "ax:  " << ax << "      ay:  " << ay << "     az:  " << az;
