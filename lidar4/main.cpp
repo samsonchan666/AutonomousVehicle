@@ -283,9 +283,11 @@ void* run_IMU(void * ){
             x_acc_avr = 0;
             x_distance = 0;
             y_distance = 0;
-            printf("Distance(accumulate in second): %.4f %.4f ", x_distance_t, y_distance_t );
-            printf("%d %d \n", int(floor(m2mm(x_distance_t)/(SCALE))), int(floor(m2mm(y_distance_t)/SCALE)));
-            corSys.assignRobotBlock(int(floor(m2mm(x_distance_t)/(SCALE))), int(floor(m2mm(y_distance_t)/SCALE)));
+//            printf("Distance(accumulate in second): %.4f %.4f ", x_distance_t, y_distance_t );
+//            printf("%d %d \n", int(floor(m2mm(x_distance_t)/(SCALE))), int(floor(m2mm(y_distance_t)/SCALE)));
+//            int x = X_SCALE + int(floor(m2mm(x_distance_t)/SCALE));
+//            int y = Y_SCALE + int(floor(m2mm(y_distance_t)/SCALE));
+//            corSys.assignRobotBlock(x, y);
         }
 
         if (!(imu.run_sensors())) continue; //Run the sensors, skip extreme value
@@ -302,7 +304,7 @@ void* run_IMU(void * ){
         //if (count < 100){
             if (count2 > no_of_samples) {
                 printf("Offset: %.3f %.3f", x_acc_avr/=no_of_samples, y_acc_avr/=no_of_samples );
-                dataLog << x_acc_avr << "\t" << y_acc_avr << "\n";
+//                dataLog << x_acc_avr << "\t" << y_acc_avr << "\n";
                 count2 = 0;
                 x_acc_avr = 0; 
                 y_acc_avr = 0;
@@ -310,7 +312,7 @@ void* run_IMU(void * ){
                 break;
             }
             else {
-                //dataLog << cur_acc.ax << "\t" << cur_acc.ay << "\n";
+                dataLog << cur_acc.ax << "\t" << cur_acc.ay << "\n";
                 y_acc_avr += cur_acc.ay;
                 x_acc_avr += cur_acc.ax;
             };
@@ -318,6 +320,7 @@ void* run_IMU(void * ){
         //}
         //else break;
 */
+         
         x_cur_vel = x_pre_vel + (raw2mssq(cur_acc.ax) * timeInterval);    // v = v0 + at, set the t to 0.001   
         x_distance = x_distance + ( x_cur_vel  * timeInterval);   // s = s0 +vt, set t to 0.001
         
@@ -355,7 +358,32 @@ void* run_lidar(void * _drv){
       }
     pthread_exit(NULL);
 }
-
+void bug2(int x, int y){
+    int robotX, robotY;
+    enum { GOALSEEK, WALLFOLLOW, STOP};
+    int state = GOALSEEK;
+    while(!corSys.atGoal()){
+        corSys.getRobotPosition(&robotX, &robotY);
+        if (state == GOALSEEK){
+            //rotationVel = ComputeGoalSeekRot(goalAngle);
+            //if(ObstaclesInWay(goalAngle, &sonars))
+            //robot.SetState(WALLFOLLOW);
+        }
+        else if (state == WALLFOLLOW){
+            // rotationVel = ComputeRWFRot(&sonars);
+            //if( ! ObstaclesInWay(goalAngle, &sonars))
+            //robot.SetState(GOALSEEK);
+        }
+        //robot.SetVelocity(forwardVel, rotationVel);       
+    }
+    state = STOP;
+        //Robot states
+//    System.out.println("At Goal!");
+//    forwardVel = 0;
+//    rotationVel = 0;
+//    robot.SetState(DONE);
+}  
+    
 // void plot_histogram(rplidar_response_measurement_node_t * nodes, size_t count)
 // {
 //     const int BARCOUNT =  75;

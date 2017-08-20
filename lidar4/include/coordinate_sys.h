@@ -8,8 +8,8 @@
 #include <vector>
 
 //Grid map size and scale
-#define X_SCALE 100
-#define Y_SCALE 100
+#define X_SCALE 120
+#define Y_SCALE 120
 #define MAX_DIS SCALE * X_SCALE
 #define DIS_TO_CENTER X_SCALE/2+0.5
 //#define SCALE 225 //half of width of robot(mm)
@@ -62,12 +62,16 @@ private:
     float dist_to_lidar;
     //Robot's coordinate in grid map
     int robot_x, robot_y;
-	Block blocks[X_SCALE][Y_SCALE]; //block(x,y)
+    int goalX, goalY;
+    Block blocks[X_SCALE][Y_SCALE]; //block(x,y)
 public:
 	CoordinateSys() : dist_to_lidar(SCALE * DIS_TO_CENTER),
-					  robot_x(0),
-					  robot_y(0) {
-			//initialize the robot position to center
+                          robot_x(X_SCALE/2),   
+                          robot_y(Y_SCALE/2),
+                          goalX(0),
+                          goalY(0)
+        {  
+            //initialize the robot position to center
             assignRobotBlock(robot_x,robot_y);
         }
 	~CoordinateSys() {}
@@ -92,41 +96,47 @@ public:
             assignBlock(transformToPoint(angle,distance));
 	}
 
-	void assignRobotBlock(int x, int y){
+	void assignRobotBlock(int x, int y){           
+            if (outRange(x, y)) return;
+            if (robot_x == x && robot_y == y) return;
+            robot_x = x;
+            robot_y = y;
+	}
+        
+        void getRobotPosition(int* x, int* y){            
+            (*x) = robot_x;
+            (*y) = robot_y;
+        }
+        
+        void setGoalPos(int x, int y){
+            goalX = x;
+            goalY = y;
+        }
+        
+        void getGoalPos(int* x, int* y){
+            (*x) = goalX;
+            (*y) = goalY;
+        }
+        
+        float getGoalAngle(){
             
-            if (outRange(X_SCALE/2+x, Y_SCALE/2+y)) return;
-            //Removal of existing robot block
-            for (int i = 0; i < Y_SCALE; i++){  
-                    for (int j = 0; j < X_SCALE; j++){
-                        if (blocks[j][i].getRobotExist()){
-                            if ((j == x && i == y)) break;
-                            else {
-                                blocks[j][i].setRobotExist(false);  
-                                break;
-                            }                      
-                        }
-                    }
-            }
-            blocks[X_SCALE/2+x][Y_SCALE/2+y].setRobotExist(true);
-	}
-
-	//Distance the robot move to localize it
-	void robotMovef(float angle, float d){
-		// Cannot see a difference if d is less than the scale
-		if (d < SCALE) return;
-
-	}
+        }
+        
+        bool atGoal(){
+            if (robot_x == goalX && robot_y == goalY) return true;
+            else return false;                    
+        }
 
 	void printBlocks(){
-		for (int i = 0; i < Y_SCALE; i++){
-			for (int j = 0; j < X_SCALE; j++){
-				vector<Point> points = blocks[j][i].getPointVec();
-				if (blocks[j][i].getRobotExist()) cout << "@" ;
-				else if (points.size() >= 1) cout << "#";
-				else cout << " ";
-				}
-			cout << endl;
-			}
+            for (int i = 0; i < Y_SCALE; i++){
+                for (int j = 0; j < X_SCALE; j++){
+                    vector<Point> points = blocks[j][i].getPointVec();
+                    if (j == robot_x && i == robot_y) cout << "@" ;
+                    else if (points.size() >= 1) cout << "#";
+                    else cout << " ";
+                }
+                cout << endl;
+            }
 	}
 
 	int calcuQuadrant(float angle){
@@ -174,6 +184,7 @@ public:
         bool outRange(int x, int y){
             if (x < 0 || y < 0) {
                 printf("Error, array index negative\n");
+                printf("x: %d y: %d \n", x, y);
                 return true;
             }
             else if (x > X_SCALE || y > Y_SCALE){
