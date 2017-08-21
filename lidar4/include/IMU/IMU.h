@@ -27,16 +27,24 @@ struct Magnet
 	float heading;
 };
 
+struct Gyro
+{
+	int16_t gx, gy, gz;
+};
+
 class IMU{
 private:
 	Accelerometer acc_struct;
 	Magnet mag_struct;
+        Gyro gyro_struct;
 	ADXL345 acc ;
-	HMC5883L mag ;	
+	HMC5883L mag ;
+        ITG3200 gyro;
 public:
 	IMU() {
 	  printf("ADXL345 3-axis acceleromter example program\n");
 	  printf("HMC5883L 3-axis magnet example program\n");
+          printf("ITG3200 3-axis gyroscope example program\n");
 	  I2Cdev::initialize();
 	  bcm2835_delay(2000);
 
@@ -61,12 +69,24 @@ public:
 	    fprintf( stderr, "HMC5883L connection test failed! something maybe wrong, continueing anyway though ...\n");
 	    //return 1;
 	  }
-
+          
+          //Gyro connection test
+          if ( gyro.testConnection() ) {
+            bcm2835_delay(2000);
+          printf("ITG3200 connection test successful\n") ;
+          }
+           else {
+            fprintf( stderr, "ITG3200 connection test failed! something maybe wrong, continueing anyway though ...\n");
+            //return 1;
+          }
+          
 	  acc.initialize();
 
 	  mag.initialize();
 	  mag.setSampleAveraging(HMC5883L_AVERAGING_8);
 	  mag.setGain(HMC5883L_GAIN_1090);
+          
+          gyro.initialize();
 	
 	}
 	~IMU() {}
@@ -85,15 +105,19 @@ public:
 	    mag.getHeading(&mag_struct.mx, &mag_struct.my, &mag_struct.mz);
 	    compensate_sensor_errors(&mag_struct.mx, &mag_struct.my, &mag_struct.mz, MAGNET);
 	    mag_struct.heading = atan2(mag_struct.my, mag_struct.mx)  * 180 / PI;
+            
+            gyro.getRotation(&gyro_struct.gx, &gyro_struct.gy, &gyro_struct.gz);            
 
-	    printf("  ax:  %5d       ay:  %5d      az:  %5d,       mx:  %3d       my:  %3d      mz:  %3d     heading:  %3.1f deg\n"
-	      , acc_struct.ax, acc_struct.ay, acc_struct.az, 
-	      mag_struct.mx, mag_struct.my, mag_struct.mz, mag_struct.heading); 
+//	    printf("  ax:  %5d       ay:  %5d      az:  %5d,       mx:  %3d       my:  %3d      mz:  %3d     heading:  %3.1f deg\n"
+//	      , acc_struct.ax, acc_struct.ay, acc_struct.az, 
+//	      mag_struct.mx, mag_struct.my, mag_struct.mz, mag_struct.heading); 
             
 	    // write to logfile
 	    // dataLog << "ax:  " << ax << "      ay:  " << ay << "     az:  " << az;
 	    // dataLog << ",       mx:  " << mx << "       my:  " << my << "       mz:  " << mz << "     heading:  " << heading <<  " deg" << endl;
 
+            //printf("  gx:  %d       gy:  %d      gz:  %d     \n", gx, gy, gz);  
+                                  
 	    fflush(stdout);
 	    //bcm2835_delay(200);
             return true;
@@ -122,7 +146,7 @@ public:
 	      float z_max = 250; float z_min = -250;
 	      float x_offset = (x_max + x_min) / 2.0; 
 	      float y_offset = (y_max + y_min) / 2.0;  
-	      float x_cal_offset = 16.284; float y_cal_offset = -4.485; //16.284, -12.985
+	      float x_cal_offset = 21.1382; float y_cal_offset = -22.5922; //16.284, -4.485
 	      
 	      float z_offset = (z_max + z_min) / 2.0;   
 	      float x_scale = gravity/(x_max - x_offset); float y_scale = gravity/(y_max - y_offset);

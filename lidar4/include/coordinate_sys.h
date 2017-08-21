@@ -48,9 +48,11 @@ public:
 	}
 
 	void setRobotExist(bool exist) { robotExist = exist;} 
-
+        bool getRobotExist() { return robotExist;}
+        
 	vector<Point> getPointVec() { return pointVec;}
-	bool getRobotExist() { return robotExist;}
+        
+        void clearBlock() { pointVec.clear();}	  
 };
 
 //Grip map with (0,0) at top-left hand corner
@@ -103,29 +105,38 @@ public:
             robot_y = y;
 	}
         
-        void getRobotPosition(int* x, int* y){            
-            (*x) = robot_x;
-            (*y) = robot_y;
+    void getRobotPosition(int* x, int* y){            
+        (*x) = robot_x;
+        (*y) = robot_y;
+    }
+    
+    void setGoalPos(int x, int y){
+        goalX = x;
+        goalY = y;
+    }
+    
+    void getGoalPos(int* x, int* y){
+        (*x) = goalX;
+        (*y) = goalY;
+    }
+    
+    float getGoalAngle(){
+    	int x_dis = abs(robot_x - goalX);
+    	int y_dis = abs(robot_y - goalY);
+    	float angle = RadianToDegree(atan2(y_dis, x_dis));
+        switch(calcuQuadrant()){
+        	case 1: return (90 - angle);
+        	case 2: return (360 - angle);
+        	case 3: return (270 - angle);
+        	case 4: return (180 - angle);
+        	case -1: cout << "Error" << endl; return 0;
         }
-        
-        void setGoalPos(int x, int y){
-            goalX = x;
-            goalY = y;
-        }
-        
-        void getGoalPos(int* x, int* y){
-            (*x) = goalX;
-            (*y) = goalY;
-        }
-        
-        float getGoalAngle(){
-            
-        }
-        
-        bool atGoal(){
-            if (robot_x == goalX && robot_y == goalY) return true;
-            else return false;                    
-        }
+    }
+    
+    bool atGoal(){
+        if (robot_x == goalX && robot_y == goalY) return true;
+        else return false;                    
+    }
 
 	void printBlocks(){
             for (int i = 0; i < Y_SCALE; i++){
@@ -138,6 +149,67 @@ public:
                 cout << endl;
             }
 	}
+        
+        void clearBlocks(){
+            for (int i = 0; i < Y_SCALE; i++){
+                for (int j = 0; j < X_SCALE; j++){
+                    blocks[j][i].clearBlock();                   
+                }
+            }
+	}
+
+	bool obstaclesInWay(){
+		vector<Point> points;
+		switch(calcuQuadrant()){
+			case 1:{
+				//Check the nearby three blocks
+				points = blocks[robot_x][robot_y-1].getPointVec();
+				if (points.size() != 0) return true;
+				points = blocks[robot_x+1][robot_y-1].getPointVec();
+				if (points.size() != 0) return true;
+				points = blocks[robot_x+1][robot_y].getPointVec();
+				if (points.size() != 0) return true;
+				return false;				
+			}
+			case 2:{
+				points = blocks[robot_x][robot_y+1].getPointVec();
+				if (points.size() != 0) return true;
+				points = blocks[robot_x+1][robot_y+1].getPointVec();
+				if (points.size() != 0) return true;
+				points = blocks[robot_x+1][robot_y].getPointVec();
+				if (points.size() != 0) return true;
+				return false;					
+			}
+			case 3:{
+				points = blocks[robot_x][robot_y+1].getPointVec();
+				if (points.size() != 0) return true;
+				points = blocks[robot_x-1][robot_y+1].getPointVec();
+				if (points.size() != 0) return true;
+				points = blocks[robot_x-1][robot_y].getPointVec();
+				if (points.size() != 0) return true;
+				return false;					
+			}
+			case 4:{
+				points = blocks[robot_x][robot_y-1].getPointVec();
+				if (points.size() != 0) return true;
+				points = blocks[robot_x-1][robot_y-1].getPointVec();
+				if (points.size() != 0) return true;
+				points = blocks[robot_x-1][robot_y].getPointVec();
+				if (points.size() != 0) return true;
+				return false;					
+			}
+		}
+
+	}
+
+	//Calculate the quadrant of goal angle from the robot
+	int calcuQuadrant(){	
+		if (robot_x < goalX && robot_y > goalY) return 1;
+		else if (robot_x < goalX && robot_y < goalY) return 4;
+		else if (robot_x > goalX && robot_y < goalY) return 3;
+		else if (robot_x > goalX && robot_y < goalY) return 2;
+		else return -1;
+	}
 
 	int calcuQuadrant(float angle){
 		//cout << angle << endl;
@@ -148,9 +220,13 @@ public:
 		else return -1;
 	}
         
-        float degreeToRadian(float angle){
-            return angle * PI / 180.0;
-        }
+    float degreeToRadian(float angle){
+        return angle * PI / 180.0;
+    }
+
+    float RadianToDegree(float angle){
+	    return angle * 180.0 / PI;
+    }
 
 	Point transformToPoint(float angle, float distance){
 		float distance_x, distance_y;

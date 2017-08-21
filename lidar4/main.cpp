@@ -29,10 +29,12 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <fstream>
+#include <wiringPi.h>
 
 #include "./include/rplidar.h" //RPLIDAR standard sdk, all-in-one header
 #include "./include/coordinate_sys.h"
 #include "IMU.h"
+#include "./include/motor.h"
 
 #ifndef _countof
 #define _countof(_Array) (int)(sizeof(_Array) / sizeof(_Array[0]))
@@ -61,12 +63,13 @@ using namespace rp::standalone::rplidar;
 
 void print_usage(int argc, const char * argv[]);
 u_result capture_and_display(RPlidarDriver * drv);
-// void plot_histogram(rplidar_response_measurement_node_t * nodes, size_t count)
 void* run_IMU(void *);
 void* run_lidar(void *);
+void* run_motor(void * );
 
 bool IMU_loop = true;
 bool lidar_loop = true;
+bool motor_loop = true;
 CoordinateSys corSys;
 
 int main(int argc, const char * argv[]) {
@@ -116,21 +119,6 @@ int main(int argc, const char * argv[]) {
             // break;
         }
 
-        // print out the device serial number, firmware and hardware version number..
-        // printf("RPLIDAR S/N: ");
-        // for (int pos = 0; pos < 16 ;++pos) {
-        //     printf("%02X", devinfo.serialnum[pos]);
-        // }
-
-        // printf("\n"
-        //         "Version: "RPLIDAR_SDK_VERSION"\n"
-        //         "Firmware Ver: %d.%02d\n"
-        //         "Hardware Rev: %d\n"
-        //         , devinfo.firmware_version>>8
-        //         , devinfo.firmware_version & 0xFF
-        //         , (int)devinfo.hardware_version);
-
-
         // check the device health
         ////////////////////////////////////////
         op_result = drv->getHealth(healthinfo);
@@ -174,25 +162,37 @@ int main(int argc, const char * argv[]) {
         pthread_t lidarThread;
         if((lidarThreadRes = pthread_create(&lidarThread,NULL,run_lidar, (void* )drv)))
         {
-            printf("Unable to create IMU thread: %d\n\r",lidarThreadRes);
+            printf("Unable to create lidar thread: %d\n\r",lidarThreadRes);
             lidar_loop = false;
+        } 
+
+        int motorThreadRes;
+        pthread_t motorThread;
+        if((motorThreadRes = pthread_create(&motorThread,NULL,run_motor, NULL)))
+        {
+            printf("Unable to create motor thread: %d\n\r", motorThreadRes);
+            motor_loop = false;
         }        
-    
     while (1){
-        printf("Press any key to to exit ");
+        printf("Press any key to to exit\n ");
          if (getchar()) break;
      }
         
     void *status;
-    int IMU_JoinRes, lidar_JoinRes;
+    int IMU_JoinRes, lidar_JoinRes, motor_JoinRes;
     IMU_loop = false;
     lidar_loop = false;
+    motor_loop = false;
+    motor_term();
     
     if (IMU_JoinRes=pthread_join(IMUThread, &status)){
         printf("Error:unable to join, %d", IMU_JoinRes );
     }   
     if (lidar_JoinRes=pthread_join(lidarThread, &status)){
         printf("Error:unable to join, %d", lidar_JoinRes );
+    }
+    if (motor_JoinRes=pthread_join(motorThread, &status)){
+        printf("Error:unable to join, %d", motor_JoinRes );
     }   
 
     drv->stop();
@@ -225,24 +225,21 @@ u_result capture_and_display(RPlidarDriver * drv)
     ans = drv->grabScanData(nodes, count);
     if (IS_OK(ans) || ans == RESULT_OPERATION_TIMEOUT) {
         drv->ascendScanData(nodes, count);
-        // plot_histogram(nodes, count);
 
-//        printf("Do you want to see all the data? (y/n) ");
-//        int key = getchar();
-//        if (key == 'Y' || key == 'y') {
+        corSys.clearBlocks();
+     
             for (int pos = 0; pos < (int)count ; ++pos) {
 //                 printf("%s theta: %03.2f Dist: %08.2f \n", 
 //                     (nodes[pos].sync_quality & RPLIDAR_RESP_MEASUREMENT_SYNCBIT) ?"S ":"  ", 
 //                     (nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f,
 //                     nodes[pos].distance_q2/4.0f);
-                corSys.assignBlock((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f
-                    ,nodes[pos].distance_q2/4.0f);
+//                corSys.assignBlock((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f
+//                    ,nodes[pos].distance_q2/4.0f);
             }
-            corSys.printBlocks();
+
+ 
+//            corSys.printBlocks();
         }
-//    } else {
-//        printf("error code: %x\n", ans);
-//    }
     delay(_word_size_t(1000));
     return ans;
 }
@@ -253,6 +250,7 @@ void* run_IMU(void * ){
     IMU imu;    //Create the IMU object  
     int count = 0;
     int count2 = 0; //Offset counts
+    int count3 = 0; //Offset counts
     float x_acc_avr =0 ;
     float y_acc_avr =0 ;
     float timeInterval = 0.001;  //second 
@@ -272,22 +270,22 @@ void* run_IMU(void * ){
             x_acc_avr /= _no_of_samples;
             y_acc_avr /= _no_of_samples;
             //printf("x, y average: %f, %f\n", abs(x_acc_avr), y_acc_avr);
-            if ( abs(x_acc_avr) > 1.7) {
+            if ( abs(x_acc_avr) > 1.85) {
                 x_distance_t += x_distance;                
                 //cout << "Bigger than 1.7" << endl;
             }
-            if ( abs(y_acc_avr) > 1.6) y_distance_t += y_distance;  
+            if ( abs(y_acc_avr) > 2.10) y_distance_t += y_distance;  
             // reset all the count
             count = 0; 
             y_acc_avr = 0;
             x_acc_avr = 0;
             x_distance = 0;
             y_distance = 0;
-//            printf("Distance(accumulate in second): %.4f %.4f ", x_distance_t, y_distance_t );
-//            printf("%d %d \n", int(floor(m2mm(x_distance_t)/(SCALE))), int(floor(m2mm(y_distance_t)/SCALE)));
-//            int x = X_SCALE + int(floor(m2mm(x_distance_t)/SCALE));
-//            int y = Y_SCALE + int(floor(m2mm(y_distance_t)/SCALE));
-//            corSys.assignRobotBlock(x, y);
+            printf("Distance(accumulate in second): %.4f %.4f ", x_distance_t, y_distance_t );
+            printf("%d %d \n", int(floor(m2mm(x_distance_t)/(SCALE))), int(floor(m2mm(y_distance_t)/SCALE)));
+            int x = X_SCALE/2 - int(floor(m2mm(x_distance_t)/SCALE));
+            int y = Y_SCALE/2 - int(floor(m2mm(y_distance_t)/SCALE));
+            corSys.assignRobotBlock(x, y);
         }
 
         if (!(imu.run_sensors())) continue; //Run the sensors, skip extreme value
@@ -297,28 +295,28 @@ void* run_IMU(void * ){
         y_acc_avr += cur_acc.ay;   
         x_acc_avr += cur_acc.ax;   
          
-        /*
+ /*     
          // Offset test (in raw acceleration value)     
         printf("%d ", count2);
         float no_of_samples = 100;
-        //if (count < 100){
+        if (count3 < 100){
             if (count2 > no_of_samples) {
                 printf("Offset: %.3f %.3f", x_acc_avr/=no_of_samples, y_acc_avr/=no_of_samples );
-//                dataLog << x_acc_avr << "\t" << y_acc_avr << "\n";
+                dataLog << x_acc_avr << "\t" << y_acc_avr << "\n";
                 count2 = 0;
                 x_acc_avr = 0; 
                 y_acc_avr = 0;
-                count++;
-                break;
+                count3++;
+//                break;
             }
             else {
-                dataLog << cur_acc.ax << "\t" << cur_acc.ay << "\n";
+//                dataLog << cur_acc.ax << "\t" << cur_acc.ay << "\n";
                 y_acc_avr += cur_acc.ay;
                 x_acc_avr += cur_acc.ax;
             };
             count2++;            
-        //}
-        //else break;
+        }
+        else break;
 */
          
         x_cur_vel = x_pre_vel + (raw2mssq(cur_acc.ax) * timeInterval);    // v = v0 + at, set the t to 0.001   
@@ -341,6 +339,7 @@ void* run_IMU(void * ){
 }
 
 void* run_lidar(void * _drv){
+    delay(_word_size_t(4000));
     RPlidarDriver * drv = static_cast<RPlidarDriver *>(_drv);
     drv->startMotor();
      // take only one 360 deg scan and       display the result as a histogram
@@ -358,21 +357,37 @@ void* run_lidar(void * _drv){
       }
     pthread_exit(NULL);
 }
+
+void* run_motor(void *){
+//    if (wiringPiSetupGpio() == -1) {
+//        printf("Could not initialize Wiring PI\n");
+//    }
+//
+//    motor_init();
+//    motor_left_set_normalized_speed(0.3);
+//    motor_right_set_normalized_speed(0.3);
+//    delay(_word_size_t(1000));
+// 
+//    pthread_exit(NULL);
+}
+
 void bug2(int x, int y){
     int robotX, robotY;
     enum { GOALSEEK, WALLFOLLOW, STOP};
     int state = GOALSEEK;
+    //float goalAngle
     while(!corSys.atGoal()){
+        
         corSys.getRobotPosition(&robotX, &robotY);
         if (state == GOALSEEK){
             //rotationVel = ComputeGoalSeekRot(goalAngle);
-            //if(ObstaclesInWay(goalAngle, &sonars))
-            //robot.SetState(WALLFOLLOW);
+            if( corSys.obstaclesInWay())
+            state = WALLFOLLOW;
         }
         else if (state == WALLFOLLOW){
             // rotationVel = ComputeRWFRot(&sonars);
-            //if( ! ObstaclesInWay(goalAngle, &sonars))
-            //robot.SetState(GOALSEEK);
+            if( !corSys.obstaclesInWay())
+            state = GOALSEEK;
         }
         //robot.SetVelocity(forwardVel, rotationVel);       
     }
@@ -383,46 +398,4 @@ void bug2(int x, int y){
 //    rotationVel = 0;
 //    robot.SetState(DONE);
 }  
-    
-// void plot_histogram(rplidar_response_measurement_node_t * nodes, size_t count)
-// {
-//     const int BARCOUNT =  75;
-//     const int MAXBARHEIGHT = 20;
-//     const float ANGLESCALE = 360.0f/BARCOUNT;
 
-//     float histogram[BARCOUNT];
-//     for (int pos = 0; pos < _countof(histogram); ++pos) {
-//         histogram[pos] = 0.0f;
-//     }
-
-//     float max_val = 0;
-//     for (int pos =0 ; pos < (int)count; ++pos) {
-//         int int_deg = (int)((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f/ANGLESCALE);
-//         if (int_deg >= BARCOUNT) int_deg = 0;
-//         float cachedd = histogram[int_deg];
-//         if (cachedd == 0.0f ) {
-//             cachedd = nodes[pos].distance_q2/4.0f;
-//         } else {
-//             cachedd = (nodes[pos].distance_q2/4.0f + cachedd)/2.0f;
-//         }
-
-//         if (cachedd > max_val) max_val = cachedd;
-//         histogram[int_deg] = cachedd;
-//     }
-
-//     for (int height = 0; height < MAXBARHEIGHT; ++height) {
-//         float threshold_h = (MAXBARHEIGHT - height - 1) * (max_val/MAXBARHEIGHT);
-//         for (int xpos = 0; xpos < BARCOUNT; ++xpos) {
-//             if (histogram[xpos] >= threshold_h) {
-//                 putc('*', stdout);
-//             }else {
-//                 putc(' ', stdout);
-//             }
-//         }
-//         printf("\n");
-//     }
-//     for (int xpos = 0; xpos < BARCOUNT; ++xpos) {
-//         putc('-', stdout);
-//     }
-//     printf("\n");
-// }
