@@ -61,19 +61,26 @@ static inline void delay(_word_size_t ms){
 
 using namespace rp::standalone::rplidar;
 
-void print_usage(int argc, const char * argv[]);
-u_result capture_and_display(RPlidarDriver * drv);
 void* run_IMU(void *);
 void* run_lidar(void *);
-void* run_motor(void * );
+void run_motor(char c );
+
+u_result capture_and_display(RPlidarDriver * drv);
+void print_usage(int argc, const char * argv[]);
 
 bool IMU_loop = true;
 bool lidar_loop = true;
 bool motor_loop = true;
 CoordinateSys corSys;
 
+// Set of variables to command what should display
+bool get_acc_dis = false;
+bool get_avr_acc = false;
+bool get_avr_of_avr_acc = false;
+bool get_map = false;
+
+
 int main(int argc, const char * argv[]) {
-    
     const char * opt_com_path = NULL;
     _u32         opt_com_baudrate = 115200;
     u_result     op_result;
@@ -149,10 +156,12 @@ int main(int argc, const char * argv[]) {
             // drv->reset();
             // break;
         }
-
+        
+        IMU* imu = new IMU();    //Create the IMU object  
+                
         int IMUThreadRes;
         pthread_t IMUThread; //create new thread
-        if((IMUThreadRes = pthread_create(&IMUThread,NULL,run_IMU,NULL)))
+        if((IMUThreadRes = pthread_create(&IMUThread,NULL,run_IMU,(void* )imu)))
         {
             printf("Unable to create IMU thread: %d\n\r",IMUThreadRes);
             IMU_loop = false;
@@ -166,24 +175,47 @@ int main(int argc, const char * argv[]) {
             lidar_loop = false;
         } 
 
-        int motorThreadRes;
-        pthread_t motorThread;
-        if((motorThreadRes = pthread_create(&motorThread,NULL,run_motor, NULL)))
-        {
-            printf("Unable to create motor thread: %d\n\r", motorThreadRes);
-            motor_loop = false;
-        }        
+//        int motorThreadRes;
+//        pthread_t motorThread;
+//        if((motorThreadRes = pthread_create(&motorThread,NULL,run_motor, NULL)))
+//        {
+//            printf("Unable to create motor thread: %d\n\r", motorThreadRes);
+//            motor_loop = false;
+//        }        
     while (1){
-        printf("Press any key to to exit\n ");
-         if (getchar()) break;
+        printf("Press x to exit\n");
+        printf("Press c to clear the window\n");
+        printf("Press v to display distance\n");
+        printf("Press b to display average acceleration in 1s\n");
+        printf("Press n to display average acceleration in 10s\n" );
+        printf("Press m to display map\n");
+        printf("Press wasd to control the robot, q to stop it\n");
+        char c = getchar();
+        if (c == 'x') break; //exit
+        else if (c == 'c'){  //clear display
+            get_acc_dis = false;
+            get_avr_acc = false;
+            get_avr_of_avr_acc = false;   
+            get_map = false;
+            system("clear");
+        }
+        else if (c == 'v') get_acc_dis = true;//get accumulated distance
+        else if (c == 'b') get_avr_acc = true;//get average acceleration
+        else if (c == 'n') get_avr_of_avr_acc = true;//get average of averages of acceleration
+        else if (c == 'm') get_map = true;  // display map from lidar
+        else if (c == 'q') run_motor(c);
+        else if (c == 'w') run_motor(c);
+        else if (c == 'a') run_motor(c);
+        else if (c == 's') run_motor(c);
+        else if (c == 'd') run_motor(c);
      }
         
     void *status;
     int IMU_JoinRes, lidar_JoinRes, motor_JoinRes;
     IMU_loop = false;
     lidar_loop = false;
-    motor_loop = false;
-    motor_term();
+//    motor_loop = false;
+//    motor_term();
     
     if (IMU_JoinRes=pthread_join(IMUThread, &status)){
         printf("Error:unable to join, %d", IMU_JoinRes );
@@ -191,10 +223,9 @@ int main(int argc, const char * argv[]) {
     if (lidar_JoinRes=pthread_join(lidarThread, &status)){
         printf("Error:unable to join, %d", lidar_JoinRes );
     }
-    if (motor_JoinRes=pthread_join(motorThread, &status)){
-        printf("Error:unable to join, %d", motor_JoinRes );
-    }   
-
+//    if (motor_JoinRes=pthread_join(motorThread, &status)){
+//        printf("Error:unable to join, %d", motor_JoinRes );
+//    }   
     drv->stop();
     drv->stopMotor();
 
@@ -202,61 +233,22 @@ int main(int argc, const char * argv[]) {
     return 0;
 }
 
-void print_usage(int argc, const char * argv[])
-{
-    printf("Simple LIDAR data grabber for RPLIDAR.\n"
-           "Version: "RPLIDAR_SDK_VERSION"\n"
-           "Usage:\n"
-           "%s <com port> [baudrate]\n"
-           "The default baudrate is 115200. Please refer to the datasheet for details.\n"
-           , argv[0]);
-}
-
-u_result capture_and_display(RPlidarDriver * drv)
-{
-    u_result ans;
-    
-    rplidar_response_measurement_node_t nodes[360*2];
-    size_t   count = _countof(nodes);
-
-    //printf("waiting for data...\n");
-
-    // fetech extactly one 0-360 degrees' scan
-    ans = drv->grabScanData(nodes, count);
-    if (IS_OK(ans) || ans == RESULT_OPERATION_TIMEOUT) {
-        drv->ascendScanData(nodes, count);
-
-        corSys.clearBlocks();
-     
-            for (int pos = 0; pos < (int)count ; ++pos) {
-//                 printf("%s theta: %03.2f Dist: %08.2f \n", 
-//                     (nodes[pos].sync_quality & RPLIDAR_RESP_MEASUREMENT_SYNCBIT) ?"S ":"  ", 
-//                     (nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f,
-//                     nodes[pos].distance_q2/4.0f);
-//                corSys.assignBlock((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f
-//                    ,nodes[pos].distance_q2/4.0f);
-            }
-
- 
-//            corSys.printBlocks();
-        }
-    delay(_word_size_t(1000));
-    return ans;
-}
-
-void* run_IMU(void * ){
+void* run_IMU(void * _imu){
     ofstream dataLog;
     dataLog.open("log.txt");
-    IMU imu;    //Create the IMU object  
-    int count = 0;
+    IMU * imu = static_cast<IMU *>(_imu);
+    int count = 0; //Offset counts
     int count2 = 0; //Offset counts
-    int count3 = 0; //Offset counts
     float x_acc_avr =0 ;
     float y_acc_avr =0 ;
+    float x_accum_avr_acc = 0 ;
+    float y_accum_avr_acc = 0 ;
     float timeInterval = 0.001;  //second 
     float _timeInterval = 0.001 * pow(10, 6); //macro second (10^-6)
-    int _no_of_samples = 100;
+    int no_of_avr_sample = 100;
+    int no_of_acc_sample = 100;
     Accelerometer cur_acc, pre_acc;
+    cur_acc.ax = 0; cur_acc.ay = 0; cur_acc.az  = 0; //Initialize it
     pre_acc.ax = 0; pre_acc.ay = 0; pre_acc.az  = 0; //Initialize it
     float x_cur_vel = 0; float y_cur_vel = 0;
     float x_pre_vel = 0; float y_pre_vel = 0;
@@ -266,66 +258,68 @@ void* run_IMU(void * ){
     float y_distance_t = 0; //accumulate every 1s 
     
     while (IMU_loop){
-        if (count == _no_of_samples){   //0.1s
-            x_acc_avr /= _no_of_samples;
-            y_acc_avr /= _no_of_samples;
-            //printf("x, y average: %f, %f\n", abs(x_acc_avr), y_acc_avr);
-            if ( abs(x_acc_avr) > 1.85) {
-                x_distance_t += x_distance;                
-                //cout << "Bigger than 1.7" << endl;
+//        if (count2 < no_of_avr_sample){
+            if (count == no_of_acc_sample){   //0.1s
+                x_acc_avr /= no_of_acc_sample;
+                y_acc_avr /= no_of_acc_sample;
+                x_accum_avr_acc += x_acc_avr;
+                y_accum_avr_acc += y_acc_avr;
+                        
+                if (get_avr_acc) {
+                    printf("Offset: %.3f %.3f\n", x_acc_avr, y_acc_avr );               
+                    dataLog << x_acc_avr << "\t" << y_acc_avr << "\n";
+                }
+                
+                //Noise removal
+                if ( abs(x_acc_avr) > 3)  x_distance_t += x_distance;                                
+                if ( abs(y_acc_avr) > 3) y_distance_t += y_distance; 
+                
+                // reset all the count
+                count = 0; 
+                y_acc_avr = 0;
+                x_acc_avr = 0;
+                x_distance = 0;
+                y_distance = 0;
+                
+                if (get_acc_dis){
+                    printf("Velocity: %.3f %.3f\n", x_cur_vel, y_cur_vel);
+                    printf("Distance(accumulate in second): %.4f %.4f ", x_distance_t, y_distance_t );
+                    printf("%d %d \n", int(floor(m2mm(x_distance_t)/(SCALE))), int(floor(m2mm(y_distance_t)/SCALE)));              
+                }
+                
+                int x = X_SCALE/2 - int(floor(m2mm(x_distance_t)/SCALE));
+                int y = Y_SCALE/2 - int(floor(m2mm(y_distance_t)/SCALE));
+//                corSys.assignRobotBlock(x, y);
+                
+                count2++;
             }
-            if ( abs(y_acc_avr) > 2.10) y_distance_t += y_distance;  
-            // reset all the count
-            count = 0; 
-            y_acc_avr = 0;
-            x_acc_avr = 0;
-            x_distance = 0;
-            y_distance = 0;
-            printf("Distance(accumulate in second): %.4f %.4f ", x_distance_t, y_distance_t );
-            printf("%d %d \n", int(floor(m2mm(x_distance_t)/(SCALE))), int(floor(m2mm(y_distance_t)/SCALE)));
-            int x = X_SCALE/2 - int(floor(m2mm(x_distance_t)/SCALE));
-            int y = Y_SCALE/2 - int(floor(m2mm(y_distance_t)/SCALE));
-            corSys.assignRobotBlock(x, y);
-        }
-
-        if (!(imu.run_sensors())) continue; //Run the sensors, skip extreme value
-        cur_acc = imu.getAccelerometer();
+//        }
+//        else {
+//            if (get_avr_of_avr_acc) {
+//                x_accum_avr_acc /= no_of_avr_sample;
+//                y_accum_avr_acc /= no_of_avr_sample;
+//                printf("Average of 100 averages samples: %.3f %.3f\n", x_accum_avr_acc, y_accum_avr_acc);
+//            }
+//            //Reset the value
+//            x_accum_avr_acc = 0;
+//            y_accum_avr_acc = 0;            
+//            count2 = 0; //reset the counter
+//        }
+ 
+        if (!(imu->run_sensors())) continue; //Run the sensors, skip extreme value
+        cur_acc = imu->getAccelerometer();
         
-//        Try to accumulate acceleration for noise testing
+//      Accumulate acceleration for noise testing
         y_acc_avr += cur_acc.ay;   
         x_acc_avr += cur_acc.ax;   
-         
- /*     
-         // Offset test (in raw acceleration value)     
-        printf("%d ", count2);
-        float no_of_samples = 100;
-        if (count3 < 100){
-            if (count2 > no_of_samples) {
-                printf("Offset: %.3f %.3f", x_acc_avr/=no_of_samples, y_acc_avr/=no_of_samples );
-                dataLog << x_acc_avr << "\t" << y_acc_avr << "\n";
-                count2 = 0;
-                x_acc_avr = 0; 
-                y_acc_avr = 0;
-                count3++;
-//                break;
-            }
-            else {
-//                dataLog << cur_acc.ax << "\t" << cur_acc.ay << "\n";
-                y_acc_avr += cur_acc.ay;
-                x_acc_avr += cur_acc.ax;
-            };
-            count2++;            
-        }
-        else break;
-*/
-         
+                  
         x_cur_vel = x_pre_vel + (raw2mssq(cur_acc.ax) * timeInterval);    // v = v0 + at, set the t to 0.001   
         x_distance = x_distance + ( x_cur_vel  * timeInterval);   // s = s0 +vt, set t to 0.001
         
         y_cur_vel = y_pre_vel + (raw2mssq(cur_acc.ay) * timeInterval);
         y_distance = y_distance + ( y_cur_vel  * timeInterval);           
  
-//        printf("%.3f %.3f\n", x_cur_vel, y_cur_vel);
+        
 //        printf("%.3f %.3f\n", x_distance, y_distance);
         fflush(stdout);
         x_pre_vel = x_cur_vel;
@@ -350,28 +344,51 @@ void* run_lidar(void * _drv){
         pthread_exit(NULL);
     }
     while (lidar_loop){
-        if (IS_FAIL(capture_and_display(drv))) {
-            fprintf(stderr, "Error, cannot grab scan data.\n");
-            break;
+        if (get_map){
+            if (IS_FAIL(capture_and_display(drv))) {
+               fprintf(stderr, "Error, cannot grab scan data.\n");
+               break;
+           }           
         }
       }
     pthread_exit(NULL);
 }
 
-void* run_motor(void *){
-//    if (wiringPiSetupGpio() == -1) {
-//        printf("Could not initialize Wiring PI\n");
-//    }
-//
-//    motor_init();
-//    motor_left_set_normalized_speed(0.3);
-//    motor_right_set_normalized_speed(0.3);
-//    delay(_word_size_t(1000));
-// 
+void run_motor(char c){
+    double speed = 0.2;
+    if (wiringPiSetupGpio() == -1) {
+        printf("Could not initialize Wiring PI\n");
+    }
+    motor_init();
+    if (c == 'q') {
+//       motor_left_set_normalized_speed(0);
+//       motor_right_set_normalized_speed(0);
+       motor_term();
+    }
+    else if (c == 'w') {
+       motor_left_set_normalized_speed(speed);
+       motor_right_set_normalized_speed(speed);
+//       delay(_word_size_t(1000));       
+    }
+    else if (c == 's') {
+       motor_left_set_normalized_speed(-speed);
+       motor_right_set_normalized_speed(-speed);
+//       delay(_word_size_t(1000));       
+    }
+    else if (c == 'a') {
+       motor_left_set_normalized_speed(speed);
+       motor_right_set_normalized_speed(-speed);
+//       delay(_word_size_t(1000));       
+    }    
+    else if (c == 'd') {
+       motor_left_set_normalized_speed(-speed);
+       motor_right_set_normalized_speed(speed);
+//       delay(_word_size_t(1000));       
+    }  
 //    pthread_exit(NULL);
 }
 
-void bug2(int x, int y){
+void bug2(int x, int y){    
     int robotX, robotY;
     enum { GOALSEEK, WALLFOLLOW, STOP};
     int state = GOALSEEK;
@@ -399,3 +416,44 @@ void bug2(int x, int y){
 //    robot.SetState(DONE);
 }  
 
+u_result capture_and_display(RPlidarDriver * drv)
+{
+    u_result ans;
+    
+    rplidar_response_measurement_node_t nodes[360*2];
+    size_t   count = _countof(nodes);
+
+    //printf("waiting for data...\n");
+
+    // fetech extactly one 0-360 degrees' scan
+    ans = drv->grabScanData(nodes, count);
+    if (IS_OK(ans) || ans == RESULT_OPERATION_TIMEOUT) {
+        drv->ascendScanData(nodes, count);
+
+        corSys.clearBlocks();
+     
+            for (int pos = 0; pos < (int)count ; ++pos) {
+                 printf("%s theta: %03.2f Dist: %08.2f \n", 
+                     (nodes[pos].sync_quality & RPLIDAR_RESP_MEASUREMENT_SYNCBIT) ?"S ":"  ", 
+                     (nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f,
+                     nodes[pos].distance_q2/4.0f);
+                corSys.assignBlock((nodes[pos].angle_q6_checkbit >> RPLIDAR_RESP_MEASUREMENT_ANGLE_SHIFT)/64.0f
+                    ,nodes[pos].distance_q2/4.0f);
+            }
+
+ 
+            corSys.printBlocks();
+        }
+    delay(_word_size_t(1000));
+    return ans;
+}
+
+void print_usage(int argc, const char * argv[])
+{
+    printf("Simple LIDAR data grabber for RPLIDAR.\n"
+           "Version: "RPLIDAR_SDK_VERSION"\n"
+           "Usage:\n"
+           "%s <com port> [baudrate]\n"
+           "The default baudrate is 115200. Please refer to the datasheet for details.\n"
+           , argv[0]);
+}

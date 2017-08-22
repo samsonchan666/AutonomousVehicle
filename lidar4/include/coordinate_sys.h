@@ -260,7 +260,6 @@ public:
         bool outRange(int x, int y){
             if (x < 0 || y < 0) {
                 printf("Error, array index negative\n");
-                printf("x: %d y: %d \n", x, y);
                 return true;
             }
             else if (x > X_SCALE || y > Y_SCALE){

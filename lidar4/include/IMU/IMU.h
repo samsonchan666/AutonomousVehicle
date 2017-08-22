@@ -12,13 +12,14 @@
 #include "ITG3200.h"
 
 #define PI 3.14159265
+//#define NO_OF_SAMPLE 100
 
 enum { MAGNET, ACC_METER, GYRO };
 
 struct Accelerometer{
-	int16_t ax = 0;
-	int16_t ay = 0;
-	int16_t az = 0;
+	int16_t ax;
+	int16_t ay;
+	int16_t az;
 };
 
 struct Magnet
@@ -33,13 +34,14 @@ struct Gyro
 };
 
 class IMU{
-private:
+private:       
 	Accelerometer acc_struct;
 	Magnet mag_struct;
         Gyro gyro_struct;
 	ADXL345 acc ;
 	HMC5883L mag ;
         ITG3200 gyro;
+        
 public:
 	IMU() {
 	  printf("ADXL345 3-axis acceleromter example program\n");
@@ -97,6 +99,7 @@ public:
 	bool run_sensors(){
 	    acc.getAcceleration(&acc_struct.ax, &acc_struct.ay, &acc_struct.az);
 	    compensate_sensor_errors(&acc_struct.ax, &acc_struct.ay, &acc_struct.az, ACC_METER);
+//            calAvrAcc();
             
             if (acc_struct.ax > 256 || acc_struct.ax < -256) return false;  //Extreme value
             else if (acc_struct.ay > 256 || acc_struct.ay < -256) return false;
@@ -146,7 +149,7 @@ public:
 	      float z_max = 250; float z_min = -250;
 	      float x_offset = (x_max + x_min) / 2.0; 
 	      float y_offset = (y_max + y_min) / 2.0;  
-	      float x_cal_offset = 21.1382; float y_cal_offset = -22.5922; //16.284, -4.485
+	      float x_cal_offset = 16.559-2.738+3.275; float y_cal_offset = -81.583-0.699+12.137; 
 	      
 	      float z_offset = (z_max + z_min) / 2.0;   
 	      float x_scale = gravity/(x_max - x_offset); float y_scale = gravity/(y_max - y_offset);
