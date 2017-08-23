@@ -149,7 +149,7 @@ public:
 	      float z_max = 250; float z_min = -250;
 	      float x_offset = (x_max + x_min) / 2.0; 
 	      float y_offset = (y_max + y_min) / 2.0;  
-	      float x_cal_offset = 16.559-2.738+3.275; float y_cal_offset = -81.583-0.699+12.137; 
+	      float x_cal_offset = 16.559-2.738+3.275; float y_cal_offset = -81.583-0.699+12.137+1.5; 
 	      
 	      float z_offset = (z_max + z_min) / 2.0;   
 	      float x_scale = gravity/(x_max - x_offset); float y_scale = gravity/(y_max - y_offset);
