@@ -103,7 +103,7 @@ public:
             
             if (acc_struct.ax > 256 || acc_struct.ax < -256) return false;  //Extreme value
             else if (acc_struct.ay > 256 || acc_struct.ay < -256) return false;
-            //else if (acc_struct.az > 256 || acc_struct.az < -256) return false; //Don't care about z right now
+//            else if (acc_struct.az > 256 || acc_struct.az < -256) return false; //Don't care about z right now
             
 	    mag.getHeading(&mag_struct.mx, &mag_struct.my, &mag_struct.mz);
 	    compensate_sensor_errors(&mag_struct.mx, &mag_struct.my, &mag_struct.mz, MAGNET);
@@ -111,7 +111,7 @@ public:
             
             gyro.getRotation(&gyro_struct.gx, &gyro_struct.gy, &gyro_struct.gz);            
 
-//	    printf("  ax:  %5d       ay:  %5d      az:  %5d,       mx:  %3d       my:  %3d      mz:  %3d     heading:  %3.1f deg\n"
+//	    printf("  ax:  %d       ay:  %d      az:  %d,       mx:  %3d       my:  %3d      mz:  %3d     heading:  %3.1f deg\n"
 //	      , acc_struct.ax, acc_struct.ay, acc_struct.az, 
 //	      mag_struct.mx, mag_struct.my, mag_struct.mz, mag_struct.heading); 
             
@@ -149,7 +149,7 @@ public:
 	      float z_max = 250; float z_min = -250;
 	      float x_offset = (x_max + x_min) / 2.0; 
 	      float y_offset = (y_max + y_min) / 2.0;  
-	      float x_cal_offset = 16.559-2.738+3.275; float y_cal_offset = -81.583-0.699+12.137+1.5; 
+	      float x_cal_offset = 27.840+1; float y_cal_offset = -4.760; 
 	      
 	      float z_offset = (z_max + z_min) / 2.0;   
 	      float x_scale = gravity/(x_max - x_offset); float y_scale = gravity/(y_max - y_offset);

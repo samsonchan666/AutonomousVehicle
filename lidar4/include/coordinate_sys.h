@@ -12,8 +12,8 @@
 #define Y_SCALE 180
 #define MAX_DIS SCALE * X_SCALE
 //#define X_DIS_TO_CENTER X_SCALE/2+0.5
-#define Y_DIS_TO_CENTER 123  //150, 123
-#define X_DIS_TO_CENTER 98 //90.5, 98.5
+#define X_DIS_TO_CENTER 122 //90.5, 98, 122
+#define Y_DIS_TO_CENTER 123  //150, 123, 123
 //#define SCALE 225 //half of width of robot(mm)
 #define SCALE 150 //try a smaller scale
 //#define SCALE 100 //try a smaller scale
@@ -71,8 +71,8 @@ private:
 public:
     CoordinateSys() : x_dist_to_lidar(SCALE * X_DIS_TO_CENTER),
                       y_dist_to_lidar(SCALE * Y_DIS_TO_CENTER),
-                      robot_x(X_SCALE/2),   
-                      robot_y(Y_SCALE/2),
+                      robot_x(X_DIS_TO_CENTER),   
+                      robot_y(Y_DIS_TO_CENTER),
                       goalX(0),
                       goalY(0)
     {  
@@ -104,8 +104,8 @@ public:
     void assignRobotBlock(int x, int y){           
         if (outRange(x, y)) return;
         if (robot_x == x && robot_y == y) return;
-        robot_x = x;
-        robot_y = y;
+        robot_x = X_DIS_TO_CENTER - x;
+        robot_y = Y_DIS_TO_CENTER - y;
     }
         
     void getRobotPosition(int* x, int* y){            

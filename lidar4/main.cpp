@@ -48,18 +48,19 @@
 #define delay(x)   ::Sleep(x)
 #else
 #include <unistd.h>
-static inline void delay(_word_size_t ms){
-    while (ms>=1000){
-        usleep(1000*1000);
-        ms-=1000;
-    };
-    if (ms!=0)
-        usleep(ms*1000);
-}
+//static inline void delay(_word_size_t ms){
+//    while (ms>=1000){
+//        usleep(1000*1000);
+//        ms-=1000;
+//    };
+//    if (ms!=0)
+//        usleep(ms*1000);
+//}
 #endif
 
 #define GRAVITY 9.80665
 #define raw2mssq(i) i*GRAVITY/256
+#define raw2mssq_2(i) i*31.2/1000*GRAVITY
 #define m2mm(i) i*100*10
 #define PI 3.14159265
 
@@ -72,7 +73,7 @@ void run_motor(char c );
 u_result capture_and_display(RPlidarDriver * drv);
 void print_usage(int argc, const char * argv[]);
 
-bool IMU_loop = false;
+bool IMU_loop = true;
 bool lidar_loop = true;
 bool motor_loop = true;
 CoordinateSys corSys;
@@ -97,58 +98,58 @@ int abs(int a)
   return a > 0 ? a : -1 * a;
 }
 
-// #define  DevAddr  0x53  //device address
+ #define  DevAddr  0x53  //device address
 
-// struct acc_dat{
-//     int x;
-//     int y;
-//     int z;
-// };
+ struct acc_dat{
+     int x;
+     int y;
+     int z;
+ };
 
-// void adxl345_init(int fd)
-// {
-//     wiringPiI2CWriteReg8(fd, 0x31, 0x0b);   //16 g range, full resolution, right justified
-//     wiringPiI2CWriteReg8(fd, 0x2d, 0x08);   //measuremode
-// //  wiringPiI2CWriteReg8(fd, 0x2e, 0x00);   //
-//     wiringPiI2CWriteReg8(fd, 0x1e, 0x00);   //offset x 0  8 bit lsb 2's complement 15.6 mg/LSB =>0x7F =+2g
-//     wiringPiI2CWriteReg8(fd, 0x1f, 0x00     //offset Y 0 8 bit msb
-//     wiringPiI2CWriteReg8(fd, 0x20, 0x00);   //offset Z
+ void adxl345_init(int fd)
+ {
+     wiringPiI2CWriteReg8(fd, 0x31, 0x0b);   //16 g range, full resolution, right justified
+     wiringPiI2CWriteReg8(fd, 0x2d, 0x08);   //measuremode
+ //  wiringPiI2CWriteReg8(fd, 0x2e, 0x00);   //
+     wiringPiI2CWriteReg8(fd, 0x1e, 0x00);   //offset x 0  8 bit lsb 2's complement 15.6 mg/LSB =>0x7F =+2g
+     wiringPiI2CWriteReg8(fd, 0x1f, 0x00);   //offset Y 0 8 bit msb
+     wiringPiI2CWriteReg8(fd, 0x20, 0x00);   //offset Z
     
-//     wiringPiI2CWriteReg8(fd, 0x21, 0x00);   //DUR read/write  0 =disable the tap/double tap function
-//     wiringPiI2CWriteReg8(fd, 0x22, 0x00);   //latent tap function disabled 
-//     wiringPiI2CWriteReg8(fd, 0x23, 0x00);   //latency window time  not used
+     wiringPiI2CWriteReg8(fd, 0x21, 0x00);   //DUR read/write  0 =disable the tap/double tap function
+     wiringPiI2CWriteReg8(fd, 0x22, 0x00);   //latent tap function disabled 
+     wiringPiI2CWriteReg8(fd, 0x23, 0x00);   //latency window time  not used
 
-//     wiringPiI2CWriteReg8(fd, 0x24, 0x01);    //thresshold level for decting activity 8 bit 62,5 mg/LSB
-//     wiringPiI2CWriteReg8(fd, 0x25, 0x0f);    //thresshold level for inactivity 62,5 mg/LSB
-//     wiringPiI2CWriteReg8(fd, 0x26, 0x2b);   //time value for inactivity less than the threeshold value for inactivity LSB 1 sec
-//     wiringPiI2CWriteReg8(fd, 0x27, 0x00);   //DC coupled operation the current acc. is compared diectly with the  thresshold act, and threeshold no actvity
+     wiringPiI2CWriteReg8(fd, 0x24, 0x01);    //thresshold level for decting activity 8 bit 62,5 mg/LSB
+     wiringPiI2CWriteReg8(fd, 0x25, 0x0f);    //thresshold level for inactivity 62,5 mg/LSB
+     wiringPiI2CWriteReg8(fd, 0x26, 0x2b);   //time value for inactivity less than the threeshold value for inactivity LSB 1 sec
+     wiringPiI2CWriteReg8(fd, 0x27, 0x00);   //DC coupled operation the current acc. is compared diectly with the  thresshold act, and threeshold no actvity
     
-//     wiringPiI2CWriteReg8(fd, 0x28, 0x09);    //threeshold value for free fall 62.5 mg/LSB  300 mg to 600 mg (0x05 -0x09)
-//     wiringPiI2CWriteReg8(fd, 0x29, 0xff);    //minimum time (5 ms LSB) for the RSS value of all axes must be less than the thresshold level free fall
-//     wiringPiI2CWriteReg8(fd, 0x2a, 0x80);     //supress  double tap detection greater than the valuein thresshold tap regisgter
-//     wiringPiI2CWriteReg8(fd, 0x2c, 0x0a);     //low power,  normal operation, setting it 1 ( D4)) more noise
-//     wiringPiI2CWriteReg8(fd, 0x2f, 0x00);     //int1 activated
-//     wiringPiI2CWriteReg8(fd, 0x38, 0x9f);     //stream mode, 32 samples oldtest value overwritten
-// }
+     wiringPiI2CWriteReg8(fd, 0x28, 0x09);    //threeshold value for free fall 62.5 mg/LSB  300 mg to 600 mg (0x05 -0x09)
+     wiringPiI2CWriteReg8(fd, 0x29, 0xff);    //minimum time (5 ms LSB) for the RSS value of all axes must be less than the thresshold level free fall
+     wiringPiI2CWriteReg8(fd, 0x2a, 0x80);     //supress  double tap detection greater than the valuein thresshold tap regisgter
+     wiringPiI2CWriteReg8(fd, 0x2c, 0x0a);     //low power,  normal operation, setting it 1 ( D4)) more noise
+     wiringPiI2CWriteReg8(fd, 0x2f, 0x00);     //int1 activated
+     wiringPiI2CWriteReg8(fd, 0x38, 0x9f);     //stream mode, 32 samples oldtest value overwritten
+ }
 
-// struct acc_dat adxl345_read_xyz(int fd)
-// {
-//     char x0, y0, z0, x1, y1, z1;
-//     struct acc_dat acc_xyz;
+ struct acc_dat adxl345_read_xyz(int fd)
+ {
+     char x0, y0, z0, x1, y1, z1;
+     struct acc_dat acc_xyz;
 
-//     x0 = 0xff - wiringPiI2CReadReg8(fd, 0x32);
-//     x1 = 0xff - wiringPiI2CReadReg8(fd, 0x33);
-//     y0 = 0xff - wiringPiI2CReadReg8(fd, 0x34);
-//     y1 = 0xff - wiringPiI2CReadReg8(fd, 0x35);
-//     z0 = 0xff - wiringPiI2CReadReg8(fd, 0x36);
-//     z1 = 0xff - wiringPiI2CReadReg8(fd, 0x37);
+     x0 =  wiringPiI2CReadReg8(fd, 0x32);
+     x1 =  wiringPiI2CReadReg8(fd, 0x33);
+     y0 =  wiringPiI2CReadReg8(fd, 0x34);
+     y1 =  wiringPiI2CReadReg8(fd, 0x35);
+     z0 =  wiringPiI2CReadReg8(fd, 0x36);
+     z1 =  wiringPiI2CReadReg8(fd, 0x37);
 
-//     acc_xyz.x = (int)(x1 << 8) + (int)x0;
-//     acc_xyz.y = (int)(y1 << 8) + (int)y0;
-//     acc_xyz.z = (int)(z1 << 8) + (int)z0;
+     acc_xyz.x = (int)(x1 << 8) + (int)x0;
+     acc_xyz.y = (int)(y1 << 8) + (int)y0;
+     acc_xyz.z = (int)(z1 << 8) + (int)z0;
 
-//     return acc_xyz;
-// }
+     return acc_xyz;
+ }
 
 // int main(void)
 // {
@@ -160,20 +161,21 @@ int abs(int a)
 //     if(-1 == fd){
 //         perror("I2C device setup error");   
 //     }
-
+//
 //     adxl345_init(fd);
-
+//
 //     while(1){
 //         acc_xyz = adxl345_read_xyz(fd);
-//         printf("x: %05d  y: %05d  z: %05d\n\r", acc_xyz.x/256, acc_xyz.y/256, acc_xyz.z/256);
-        
+//         printf("x: %d  y: %d  z: %d\n\r", acc_xyz.x%256, acc_xyz.y%256, acc_xyz.z%256);
+//        
 //         delay(1000);
 //                 n++;
 //                 printf("time %2d\n\r",n);
 //     }
-    
+//    
 //     return 0;
 // }
+
 
 int main(int argc, const char * argv[]) {
     const char * opt_com_path = NULL;
@@ -324,7 +326,7 @@ int main(int argc, const char * argv[]) {
     return 0;
 }
 
-void* run_IMU(void * _imu){
+void* run_IMU(void * _imu){     
     ofstream dataLog;
     dataLog.open("log.txt");
     IMU * imu = static_cast<IMU *>(_imu);
@@ -354,6 +356,8 @@ void* run_IMU(void * _imu){
         if (reset){
             x_distance_t = 0;
             y_distance_t = 0;
+            x_distance = 0;
+            y_distance = 0;            
             reset = false;
         }
         while (tt2.tv_nsec - tt1.tv_nsec <= 1000000 && tt2.tv_nsec - tt1.tv_nsec >= 0){
@@ -362,30 +366,33 @@ void* run_IMU(void * _imu){
 //        cout << tt2.tv_nsec << " " << tt1.tv_nsec << endl;        
 //        cout << tt2.tv_nsec - tt1.tv_nsec << endl;
         tt1.tv_nsec = tt2.tv_nsec;
-            
+        
             if (count == 100){
                 
                 x_acc_avr /= no_of_acc_sample;
                 y_acc_avr /= no_of_acc_sample;
 
                 if (get_avr_acc) {
-                    printf("Offset: %.3f %.3f %.3f\n", x_acc_avr, y_acc_avr, x_acc_avr/ y_acc_avr);               
-    //                    dataLog << x_acc_avr << "\t" << y_acc_avr << "\n";
                     
+                    printf("Offset: %.3f %.3f %.3f\n", x_acc_avr, y_acc_avr, x_acc_avr/ y_acc_avr);               
+//                    dataLog << x_acc_avr << "\t" << y_acc_avr << "\n";
+
                 }
 
                 //Noise removal
-                if ( abs(x_acc_avr) > 1.0)  x_distance_t += x_distance;   
-                else {
-                        x_cur_vel = 0;  x_pre_vel = 0;
-                       
-                }
-                if ( abs(y_acc_avr) > 1.0) y_distance_t += y_distance; 
-                else  {
-                     y_cur_vel = 0;  y_pre_vel = 0;
-                }
+//                if ( abs(x_acc_avr) > 1.0)  x_distance_t += x_distance;   
+//                else {
+//                        x_cur_vel = 0;  x_pre_vel = 0;
+//                       
+//                }
+//                if ( abs(y_acc_avr) > 1.0) y_distance_t += y_distance; 
+//                else  {
+//                     y_cur_vel = 0;  y_pre_vel = 0;
+//                }
+                x_distance_t += x_distance;  
+                y_distance_t += y_distance; 
 
-                // reset all the count
+//         reset all the count
                 count = 0; 
                 y_acc_avr = 0;
                 x_acc_avr = 0;
@@ -400,30 +407,48 @@ void* run_IMU(void * _imu){
                     printf("%d %d \n", int(floor(m2mm(x_distance_t)/(SCALE))), int(floor(m2mm(y_distance_t)/SCALE)));              
                 }
 
-                int x = X_SCALE/2 - int(floor(m2mm(x_distance_t)/SCALE));
-                int y = Y_SCALE/2 - int(floor(m2mm(y_distance_t)/SCALE));
+                int x = int(floor(m2mm(x_distance_t)/SCALE));
+                int y = int(floor(m2mm(y_distance_t)/SCALE));
                 corSys.assignRobotBlock(x, y);                    
             }
             
             if (!(imu->run_sensors())) continue; //Run the sensors, skip extreme value
             cur_acc = imu->getAccelerometer();
-
+            
+//            //Second method
+//            acc_xyz = adxl345_read_xyz(fd);
+//            acc_xyz.x -= 32;
+//            acc_xyz.y -= 3;
+//            printf("x: %d  y: %d  z: %d\n\r", acc_xyz.x, acc_xyz.y, acc_xyz.z);
+//            dataLog << acc_xyz.x << "\t" << acc_xyz.y << "\t" << acc_xyz.z << "\n";
     //      Accumulate acceleration for noise testing
             y_acc_avr += cur_acc.ay;   
             x_acc_avr += cur_acc.ax;   
 
-//            if (!(speed == 0)){
+            if (!(speed == 0)){
                 x_cur_vel = x_pre_vel + (raw2mssq(cur_acc.ax) * timeInterval);    // v = v0 + at, set the t to 0.001             
                 x_distance = x_distance + ( x_cur_vel  * timeInterval);   // s = s0 +vt, set t to 0.001
 
                 y_cur_vel = y_pre_vel + (raw2mssq(cur_acc.ay) * timeInterval);
                 y_distance = y_distance + ( y_cur_vel  * timeInterval);  
+            }
+            else {
+                 x_cur_vel = 0;  x_pre_vel = 0;
+                 y_cur_vel = 0;  y_pre_vel = 0;
+            }
+//            if (!(speed == 0)){
+//                x_cur_vel = x_pre_vel + (raw2mssq(float(acc_xyz.x)) * timeInterval);    // v = v0 + at, set the t to 0.001             
+//                x_distance = x_distance + ( x_cur_vel  * timeInterval);   // s = s0 +vt, set t to 0.001
+//
+//                y_cur_vel = y_pre_vel + (raw2mssq(float(acc_xyz.y)) * timeInterval);
+//                y_distance = y_distance + ( y_cur_vel  * timeInterval);  
 //            }
 //            else {
 //                 x_cur_vel = 0;  x_pre_vel = 0;
 //                 y_cur_vel = 0;  y_pre_vel = 0;
 //            }
-
+            
+            
 //            printf("%.3f %.3f\n", x_distance, y_distance);
             fflush(stdout);
             x_pre_vel = x_cur_vel;
@@ -434,6 +459,7 @@ void* run_IMU(void * _imu){
     }
     dataLog.close();
     pthread_exit(NULL);
+     
 }
 
 void* run_lidar(void * _drv){
@@ -458,15 +484,22 @@ void* run_lidar(void * _drv){
 //        }
         tt1.tv_sec = tt2.tv_sec;
         if (IS_FAIL(capture_and_display(drv))) {
-           fprintf(stderr, "Error, cannot grab scan data.\n");
-           break;                     
+//           fprintf(stderr, "Error, cannot grab scan data.\n");                 
+        }
+        if (save_map) {
+            corSys.saveMap();
+            save_map = false;
+        }
+        if (load_map) {
+            corSys.loadmap();
+            load_map = false;
         }
       }
     pthread_exit(NULL);
 }
 
 void run_motor(char c){
-    speed = 0.3;
+    speed = 0.2;
     if (wiringPiSetupGpio() == -1) {
         printf("Could not initialize Wiring PI\n");
     }
@@ -548,15 +581,6 @@ u_result capture_and_display(RPlidarDriver * drv)
             corSys.printBlocks();  
             print_map = false;
         }
-    }
-
-    if (save_map) {
-        corSys.saveMap();
-        save_map = false;
-    }
-    if (load_map) {
-        corSys.loadmap();
-        load_map = false;
     }
     return ans;
 }
