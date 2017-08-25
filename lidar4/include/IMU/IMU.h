@@ -119,7 +119,7 @@ public:
 	    // dataLog << "ax:  " << ax << "      ay:  " << ay << "     az:  " << az;
 	    // dataLog << ",       mx:  " << mx << "       my:  " << my << "       mz:  " << mz << "     heading:  " << heading <<  " deg" << endl;
 
-            //printf("  gx:  %d       gy:  %d      gz:  %d     \n", gx, gy, gz);  
+//            printf("  gx:  %d       gy:  %d      gz:  %d     \n", gyro_struct.gx, gyro_struct.gy, gyro_struct.gz);  
                                   
 	    fflush(stdout);
 	    //bcm2835_delay(200);
@@ -149,7 +149,7 @@ public:
 	      float z_max = 250; float z_min = -250;
 	      float x_offset = (x_max + x_min) / 2.0; 
 	      float y_offset = (y_max + y_min) / 2.0;  
-	      float x_cal_offset = 27.840+1; float y_cal_offset = -4.760; 
+	      float x_cal_offset = 28.25; float y_cal_offset = -10.150; 
 	      
 	      float z_offset = (z_max + z_min) / 2.0;   
 	      float x_scale = gravity/(x_max - x_offset); float y_scale = gravity/(y_max - y_offset);

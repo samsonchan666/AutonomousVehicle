@@ -12,8 +12,8 @@
 #define Y_SCALE 180
 #define MAX_DIS SCALE * X_SCALE
 //#define X_DIS_TO_CENTER X_SCALE/2+0.5
-#define X_DIS_TO_CENTER 122 //90.5, 98, 122
-#define Y_DIS_TO_CENTER 123  //150, 123, 123
+#define X_DIS_TO_CENTER 122 //90.5, 98, 122, 122
+#define Y_DIS_TO_CENTER 117  //150, 123, 123, 117
 //#define SCALE 225 //half of width of robot(mm)
 #define SCALE 150 //try a smaller scale
 //#define SCALE 100 //try a smaller scale
@@ -101,9 +101,10 @@ public:
         assignBlock(transformToPoint(angle,distance));
     }
 
-    void assignRobotBlock(int x, int y){           
-        if (outRange(x, y)) return;
-        if (robot_x == x && robot_y == y) return;
+    void assignRobotBlock(int x, int y){     
+        x = 0;
+        if (outRange(x+X_DIS_TO_CENTER, y+X_DIS_TO_CENTER)) return;
+        
         robot_x = X_DIS_TO_CENTER - x;
         robot_y = Y_DIS_TO_CENTER - y;
     }
@@ -294,11 +295,11 @@ public:
         
         bool outRange(int x, int y){
             if (x < 0 || y < 0) {
-                // printf("Error, array index negative\n");
+                 printf("Error, array index negative\n");
                 return true;
             }
             else if (x >= X_SCALE || y >= Y_SCALE){
-                // printf("Error, array index outrange\n");
+//                 printf("Error, array index outrange\n");
                 return true;
             }
             return false;

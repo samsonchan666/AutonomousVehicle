@@ -40,6 +40,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/include/IMU/I2Cdev.o \
 	${OBJECTDIR}/include/IMU/ITG3200.o \
 	${OBJECTDIR}/include/motor.o \
+	${OBJECTDIR}/include/ultrasound.o \
 	${OBJECTDIR}/main.o
 
 
@@ -91,6 +92,11 @@ ${OBJECTDIR}/include/motor.o: include/motor.cpp
 	${MKDIR} -p ${OBJECTDIR}/include
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -Iinclude/IMU -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/include/motor.o include/motor.cpp
+
+${OBJECTDIR}/include/ultrasound.o: include/ultrasound.cpp
+	${MKDIR} -p ${OBJECTDIR}/include
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -Iinclude/IMU -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/include/ultrasound.o include/ultrasound.cpp
 
 ${OBJECTDIR}/main.o: main.cpp
 	${MKDIR} -p ${OBJECTDIR}

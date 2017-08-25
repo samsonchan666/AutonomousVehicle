@@ -38,6 +38,7 @@
 #include "./include/coordinate_sys.h"
 #include "IMU.h"
 #include "./include/motor.h"
+#include "./include/ultrasound.h"
 
 #ifndef _countof
 #define _countof(_Array) (int)(sizeof(_Array) / sizeof(_Array[0]))
@@ -60,7 +61,6 @@
 
 #define GRAVITY 9.80665
 #define raw2mssq(i) i*GRAVITY/256
-#define raw2mssq_2(i) i*31.2/1000*GRAVITY
 #define m2mm(i) i*100*10
 #define PI 3.14159265
 
@@ -68,14 +68,17 @@ using namespace rp::standalone::rplidar;
 
 void* run_IMU(void *);
 void* run_lidar(void *);
+void* run_ultra(void *);
 void run_motor(char c );
 
 u_result capture_and_display(RPlidarDriver * drv);
 void print_usage(int argc, const char * argv[]);
+bool detectStair();
+bool detectObstacle();
 
 bool IMU_loop = true;
 bool lidar_loop = true;
-bool motor_loop = true;
+bool ultra_loop = true;
 CoordinateSys corSys;
 
 // Set of variables to command what should display
@@ -97,85 +100,6 @@ int abs(int a)
 {
   return a > 0 ? a : -1 * a;
 }
-
- #define  DevAddr  0x53  //device address
-
- struct acc_dat{
-     int x;
-     int y;
-     int z;
- };
-
- void adxl345_init(int fd)
- {
-     wiringPiI2CWriteReg8(fd, 0x31, 0x0b);   //16 g range, full resolution, right justified
-     wiringPiI2CWriteReg8(fd, 0x2d, 0x08);   //measuremode
- //  wiringPiI2CWriteReg8(fd, 0x2e, 0x00);   //
-     wiringPiI2CWriteReg8(fd, 0x1e, 0x00);   //offset x 0  8 bit lsb 2's complement 15.6 mg/LSB =>0x7F =+2g
-     wiringPiI2CWriteReg8(fd, 0x1f, 0x00);   //offset Y 0 8 bit msb
-     wiringPiI2CWriteReg8(fd, 0x20, 0x00);   //offset Z
-    
-     wiringPiI2CWriteReg8(fd, 0x21, 0x00);   //DUR read/write  0 =disable the tap/double tap function
-     wiringPiI2CWriteReg8(fd, 0x22, 0x00);   //latent tap function disabled 
-     wiringPiI2CWriteReg8(fd, 0x23, 0x00);   //latency window time  not used
-
-     wiringPiI2CWriteReg8(fd, 0x24, 0x01);    //thresshold level for decting activity 8 bit 62,5 mg/LSB
-     wiringPiI2CWriteReg8(fd, 0x25, 0x0f);    //thresshold level for inactivity 62,5 mg/LSB
-     wiringPiI2CWriteReg8(fd, 0x26, 0x2b);   //time value for inactivity less than the threeshold value for inactivity LSB 1 sec
-     wiringPiI2CWriteReg8(fd, 0x27, 0x00);   //DC coupled operation the current acc. is compared diectly with the  thresshold act, and threeshold no actvity
-    
-     wiringPiI2CWriteReg8(fd, 0x28, 0x09);    //threeshold value for free fall 62.5 mg/LSB  300 mg to 600 mg (0x05 -0x09)
-     wiringPiI2CWriteReg8(fd, 0x29, 0xff);    //minimum time (5 ms LSB) for the RSS value of all axes must be less than the thresshold level free fall
-     wiringPiI2CWriteReg8(fd, 0x2a, 0x80);     //supress  double tap detection greater than the valuein thresshold tap regisgter
-     wiringPiI2CWriteReg8(fd, 0x2c, 0x0a);     //low power,  normal operation, setting it 1 ( D4)) more noise
-     wiringPiI2CWriteReg8(fd, 0x2f, 0x00);     //int1 activated
-     wiringPiI2CWriteReg8(fd, 0x38, 0x9f);     //stream mode, 32 samples oldtest value overwritten
- }
-
- struct acc_dat adxl345_read_xyz(int fd)
- {
-     char x0, y0, z0, x1, y1, z1;
-     struct acc_dat acc_xyz;
-
-     x0 =  wiringPiI2CReadReg8(fd, 0x32);
-     x1 =  wiringPiI2CReadReg8(fd, 0x33);
-     y0 =  wiringPiI2CReadReg8(fd, 0x34);
-     y1 =  wiringPiI2CReadReg8(fd, 0x35);
-     z0 =  wiringPiI2CReadReg8(fd, 0x36);
-     z1 =  wiringPiI2CReadReg8(fd, 0x37);
-
-     acc_xyz.x = (int)(x1 << 8) + (int)x0;
-     acc_xyz.y = (int)(y1 << 8) + (int)y0;
-     acc_xyz.z = (int)(z1 << 8) + (int)z0;
-
-     return acc_xyz;
- }
-
-// int main(void)
-// {
-//     int fd;
-//     struct acc_dat acc_xyz;
-//         int n=0;
-//     fd = wiringPiI2CSetup(DevAddr);
-//     printf("setup done");
-//     if(-1 == fd){
-//         perror("I2C device setup error");   
-//     }
-//
-//     adxl345_init(fd);
-//
-//     while(1){
-//         acc_xyz = adxl345_read_xyz(fd);
-//         printf("x: %d  y: %d  z: %d\n\r", acc_xyz.x%256, acc_xyz.y%256, acc_xyz.z%256);
-//        
-//         delay(1000);
-//                 n++;
-//                 printf("time %2d\n\r",n);
-//     }
-//    
-//     return 0;
-// }
-
 
 int main(int argc, const char * argv[]) {
     const char * opt_com_path = NULL;
@@ -270,7 +194,17 @@ int main(int argc, const char * argv[]) {
         {
             printf("Unable to create lidar thread: %d\n\r",lidarThreadRes);
             lidar_loop = false;
-        } 
+        }
+  
+        int ultraThreadRes;
+        pthread_t ultraThread;
+        if((ultraThreadRes = pthread_create(&ultraThread,NULL, run_ultra, NULL)))
+        {
+            printf("Unable to create ultrasonic thread: %d\n\r",ultraThreadRes);
+            ultra_loop = false;
+        }
+        
+        
 
     while (1){
         printf("Press x to exit ");
@@ -307,15 +241,19 @@ int main(int argc, const char * argv[]) {
      }
         
     void *status;
-    int IMU_JoinRes, lidar_JoinRes;
+    int IMU_JoinRes, lidar_JoinRes, ultra_JoinRes;
     IMU_loop = false;
     lidar_loop = false;
+    ultra_loop = false;
     
     if (IMU_JoinRes=pthread_join(IMUThread, &status)){
         printf("Error:unable to join, %d", IMU_JoinRes );
     }   
     if (lidar_JoinRes=pthread_join(lidarThread, &status)){
         printf("Error:unable to join, %d", lidar_JoinRes );
+    }
+    if (ultra_JoinRes=pthread_join(ultraThread, &status)){
+        printf("Error:unable to join, %d", ultra_JoinRes );
     }
     motor_term();
     
@@ -325,7 +263,7 @@ int main(int argc, const char * argv[]) {
     RPlidarDriver::DisposeDriver(drv);
     return 0;
 }
-
+ 
 void* run_IMU(void * _imu){     
     ofstream dataLog;
     dataLog.open("log.txt");
@@ -372,11 +310,9 @@ void* run_IMU(void * _imu){
                 x_acc_avr /= no_of_acc_sample;
                 y_acc_avr /= no_of_acc_sample;
 
-                if (get_avr_acc) {
-                    
+                if (get_avr_acc) {                 
                     printf("Offset: %.3f %.3f %.3f\n", x_acc_avr, y_acc_avr, x_acc_avr/ y_acc_avr);               
 //                    dataLog << x_acc_avr << "\t" << y_acc_avr << "\n";
-
                 }
 
                 //Noise removal
@@ -415,12 +351,6 @@ void* run_IMU(void * _imu){
             if (!(imu->run_sensors())) continue; //Run the sensors, skip extreme value
             cur_acc = imu->getAccelerometer();
             
-//            //Second method
-//            acc_xyz = adxl345_read_xyz(fd);
-//            acc_xyz.x -= 32;
-//            acc_xyz.y -= 3;
-//            printf("x: %d  y: %d  z: %d\n\r", acc_xyz.x, acc_xyz.y, acc_xyz.z);
-//            dataLog << acc_xyz.x << "\t" << acc_xyz.y << "\t" << acc_xyz.z << "\n";
     //      Accumulate acceleration for noise testing
             y_acc_avr += cur_acc.ay;   
             x_acc_avr += cur_acc.ax;   
@@ -436,19 +366,7 @@ void* run_IMU(void * _imu){
                  x_cur_vel = 0;  x_pre_vel = 0;
                  y_cur_vel = 0;  y_pre_vel = 0;
             }
-//            if (!(speed == 0)){
-//                x_cur_vel = x_pre_vel + (raw2mssq(float(acc_xyz.x)) * timeInterval);    // v = v0 + at, set the t to 0.001             
-//                x_distance = x_distance + ( x_cur_vel  * timeInterval);   // s = s0 +vt, set t to 0.001
-//
-//                y_cur_vel = y_pre_vel + (raw2mssq(float(acc_xyz.y)) * timeInterval);
-//                y_distance = y_distance + ( y_cur_vel  * timeInterval);  
-//            }
-//            else {
-//                 x_cur_vel = 0;  x_pre_vel = 0;
-//                 y_cur_vel = 0;  y_pre_vel = 0;
-//            }
-            
-            
+           
 //            printf("%.3f %.3f\n", x_distance, y_distance);
             fflush(stdout);
             x_pre_vel = x_cur_vel;
@@ -464,10 +382,6 @@ void* run_IMU(void * _imu){
 
 void* run_lidar(void * _drv){
     delay(_word_size_t(1000));
-    struct timespec tt1, tt2;
-    
-    clock_gettime(CLOCK_REALTIME, &tt1);
-    clock_gettime(CLOCK_REALTIME, &tt2);
 
     RPlidarDriver * drv = static_cast<RPlidarDriver *>(_drv);
     drv->startMotor();
@@ -479,10 +393,6 @@ void* run_lidar(void * _drv){
 //        pthread_exit(NULL);
     }
     while (lidar_loop){
-//        while (tt2.tv_sec - tt1.tv_sec < 1){
-//            clock_gettime(CLOCK_REALTIME, &tt2);
-//        }
-        tt1.tv_sec = tt2.tv_sec;
         if (IS_FAIL(capture_and_display(drv))) {
 //           fprintf(stderr, "Error, cannot grab scan data.\n");                 
         }
@@ -524,6 +434,45 @@ void run_motor(char c){
        motor_left_set_normalized_speed(-speed);
        motor_right_set_normalized_speed(speed);      
     }  
+}
+
+void* run_ultra(void *){
+    if (wiringPiSetupGpio() == -1) {
+        printf("Could not initialize Wiring PI\n");
+    }    
+    ultrasound_init();
+    while (ultra_loop){
+        if(ultrasound_process()){
+            if(detectStair()) {
+                cout << "Stairs detected" << endl;
+                speed = 0;
+                motor_term();
+            }
+            if (detectObstacle()){
+                cout << "obstacle!!" << endl;
+            }
+        }
+    }    
+    pthread_exit(NULL);
+}
+
+bool detectStair(){
+    for (int n = 0; n < 12; ++n){
+        if (n % 3 != 0) continue;
+        if (ultrasound_distance(n) > 0.25) {
+            cout << ultrasound_distance(n) << endl;
+            return true;
+        }
+    }
+    return false;
+}
+
+bool detectObstacle(){
+    for (int n = 0; n < 12; ++n){
+        if (n % 3 == 0) continue;
+        if(ultrasound_distance(n) < 0.1) return true;
+    }
+    return false;
 }
 
 void bug2(int x, int y){    
