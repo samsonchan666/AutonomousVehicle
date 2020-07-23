@@ -3,6 +3,6 @@
 ![Module Structure Diagram](https://github.com/samsonchan666/AutonomousVehicle/blob/master/module_structure_diagram.jpg) 
 
 ### Control Flow
-![Control Flow](https://github.com/samsonchan666/AutonomousVehicle/blob/control_flow.jpg) 
+![Control Flow](https://github.com/samsonchan666/AutonomousVehicle/blob/master/control_flow.jpg) 
 
 
